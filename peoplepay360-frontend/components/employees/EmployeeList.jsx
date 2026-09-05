@@ -8,7 +8,6 @@ import { ROLE_LABELS } from '@/lib/rbac';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { Mail, Briefcase, Building, ShieldCheck, Eye, ChevronRight, ChevronLeft } from 'lucide-react';
 
-// Register AG Grid Community Modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export default function EmployeeList({
@@ -17,11 +16,10 @@ export default function EmployeeList({
   onEmployeeClick,
   totalCount = 0,
   page = 1,
-  pageSize = 10,
+  pageSize = 15,
   onPageChange,
   onPageSizeChange,
 }) {
-  // Custom Cell Renderers for AG Grid with clean minimal styling (no heavy backgrounds on column data)
   const columnDefs = useMemo(
     () => [
       {
@@ -33,12 +31,12 @@ export default function EmployeeList({
           const emp = params.data;
           if (!emp) return null;
           return (
-            <div className="flex items-center gap-3 py-1">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            <div className="flex items-center gap-2.5 py-0.5">
+              <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-xs">
                 {getInitials(emp.name)}
               </div>
               <div className="truncate">
-                <span className="font-semibold text-slate-900 hover:text-indigo-600 transition-colors block text-xs truncate">
+                <span className="font-bold text-slate-900 hover:text-indigo-600 transition-colors block text-xs truncate">
                   {emp.name}
                 </span>
                 <span className="text-[10px] text-slate-500 block leading-none">
@@ -57,7 +55,7 @@ export default function EmployeeList({
         cellRenderer: (params) => {
           if (!params.value) return '—';
           return (
-            <div className="flex items-center gap-1.5 text-xs text-slate-700 font-mono py-1">
+            <div className="flex items-center gap-1.5 text-xs text-slate-700 font-mono py-0.5">
               <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="truncate">{params.value}</span>
             </div>
@@ -68,9 +66,9 @@ export default function EmployeeList({
         headerName: 'Job Position',
         field: 'jobPosition',
         flex: 1.5,
-        minWidth: 150,
+        minWidth: 140,
         cellRenderer: (params) => (
-          <div className="flex items-center gap-1.5 text-xs text-slate-700 py-1">
+          <div className="flex items-center gap-1.5 text-xs text-slate-700 py-0.5">
             <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate">{params.value || '—'}</span>
           </div>
@@ -82,9 +80,9 @@ export default function EmployeeList({
         flex: 1.5,
         minWidth: 140,
         cellRenderer: (params) => (
-          <div className="flex items-center gap-1.5 text-xs text-slate-700 py-1">
+          <div className="flex items-center gap-1.5 text-xs text-slate-700 py-0.5">
             <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate">{params.value || 'Unassigned'}</span>
+            <span className="truncate font-semibold text-slate-800">{params.value || 'Unassigned'}</span>
           </div>
         ),
       },
@@ -96,7 +94,7 @@ export default function EmployeeList({
         cellRenderer: (params) => {
           if (!params.value) return '—';
           return (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700 py-1">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 py-0.5">
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
               <span>{ROLE_LABELS[params.value] || params.value}</span>
             </div>
@@ -107,9 +105,9 @@ export default function EmployeeList({
         headerName: 'Status',
         field: 'status',
         flex: 1,
-        minWidth: 110,
+        minWidth: 100,
         cellRenderer: (params) => (
-          <div className="py-1">
+          <div className="py-0.5">
             <span className={`badge ${getStatusBadgeClass(params.value)}`}>
               {params.value || 'Active'}
             </span>
@@ -119,18 +117,19 @@ export default function EmployeeList({
       {
         headerName: 'Action',
         field: 'id',
-        width: 90,
+        width: 95,
         pinned: 'right',
         sortable: false,
         filter: false,
         cellRenderer: (params) => (
-          <div className="flex justify-center items-center h-full py-1">
+          <div className="flex justify-center items-center h-full py-0.5">
             <button
               onClick={() => onEmployeeClick && onEmployeeClick(params.value)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+              className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
               title="View Employee Details"
             >
-              <Eye className="w-4 h-4" />
+              <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
+              <span className="text-[11px]">View</span>
             </button>
           </div>
         ),
@@ -155,48 +154,48 @@ export default function EmployeeList({
   const totalPages = Math.ceil((totalCount || employees.length) / pageSize) || 1;
 
   return (
-    <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in flex flex-col">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[calc(100vh-210px)] min-h-[480px]">
       {/* AG Grid Table Container */}
-      <div className="w-full text-xs" style={{ height: '420px' }}>
+      <div className="w-full text-xs flex-1">
         <AgGridReact
           rowData={employees}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           onRowClicked={(e) => onEmployeeClick && onEmployeeClick(e.data?.id)}
-          rowHeight={48}
-          headerHeight={40}
+          rowHeight={44}
+          headerHeight={38}
           rowSelection="single"
           overlayNoRowsTemplate="<span class='text-xs text-slate-500 font-medium'>No employee records found</span>"
         />
       </div>
 
       {/* Pagination Bar */}
-      <div className="px-4 py-3 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+      <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 shrink-0">
         <div className="flex items-center gap-2">
           <span>Rows per page:</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange && onPageSizeChange(Number(e.target.value))}
-            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+            className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:border-indigo-600 cursor-pointer"
           >
-            <option value={5}>5</option>
             <option value={10}>10</option>
-            <option value={20}>20</option>
+            <option value={15}>15</option>
+            <option value={25}>25</option>
             <option value={50}>50</option>
           </select>
         </div>
 
         <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
           <span>
-            Page <strong className="font-semibold text-slate-900">{page}</strong> of{' '}
-            <strong className="font-semibold text-slate-900">{totalPages}</strong> ({totalCount || employees.length} items)
+            Page <strong className="font-extrabold text-slate-900">{page}</strong> of{' '}
+            <strong className="font-extrabold text-slate-900">{totalPages}</strong> ({totalCount || employees.length} items)
           </span>
 
           <div className="flex items-center gap-1">
             <button
               onClick={() => onPageChange && onPageChange(page - 1)}
               disabled={page <= 1}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="p-1 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               aria-label="Previous Page"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -204,7 +203,7 @@ export default function EmployeeList({
             <button
               onClick={() => onPageChange && onPageChange(page + 1)}
               disabled={page >= totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="p-1 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               aria-label="Next Page"
             >
               <ChevronRight className="w-4 h-4" />

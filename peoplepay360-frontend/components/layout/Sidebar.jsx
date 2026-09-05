@@ -25,10 +25,10 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
   const mobileOpen = propsMobileOpen !== undefined ? propsMobileOpen : sidebarCtx?.mobileOpen;
   const onMobileClose = propsOnMobileClose || sidebarCtx?.closeMobileSidebar;
 
-  // Collapsible dropdown states
+  // Collapsible dropdown states - open by default for clear navigation
   const [openMenus, setOpenMenus] = useState({
     timeOff: true,
-    payroll: false,
+    payroll: true,
   });
 
   const toggleMenu = (key) => {
@@ -73,19 +73,19 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-2 custom-scrollbar">
         {/* Employees Module */}
         {canAccessModule(role, 'employees') && (
           <Link
             href="/employees"
             onClick={handleNavClick}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all ${
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               isActive('/employees')
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Users className="w-4 h-4 shrink-0" />
+            <Users className="w-4.5 h-4.5 shrink-0" />
             <span>Employees</span>
           </Link>
         )}
@@ -95,13 +95,13 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
           <Link
             href="/contracts"
             onClick={handleNavClick}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all ${
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               isActive('/contracts')
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <FileText className="w-4 h-4 shrink-0" />
+            <FileText className="w-4.5 h-4.5 shrink-0" />
             <span>Contracts</span>
           </Link>
         )}
@@ -111,13 +111,13 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
           <Link
             href="/attendance"
             onClick={handleNavClick}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all ${
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               isActive('/attendance')
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Clock className="w-4 h-4 shrink-0" />
+            <Clock className="w-4.5 h-4.5 shrink-0" />
             <span>Attendance</span>
           </Link>
         )}
@@ -127,10 +127,10 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
           <div className="space-y-1">
             <button
               onClick={() => toggleMenu('timeOff')}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all"
             >
               <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 shrink-0" />
+                <Calendar className="w-4.5 h-4.5 shrink-0" />
                 <span>Time Off</span>
               </div>
               <ChevronDown
@@ -141,50 +141,54 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
             </button>
 
             {openMenus.timeOff && (
-              <div className="pl-9 pr-2 space-y-1 py-1">
+              <div className="pl-6 pr-1 space-y-1 py-1 border-l-2 border-slate-200 ml-5">
                 <Link
                   href="/time-off/dashboard"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/time-off/dashboard'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Dashboard
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/dashboard' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Dashboard</span>
                 </Link>
                 <Link
                   href="/time-off/requests"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/time-off/requests'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Requests
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/requests' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Requests</span>
                 </Link>
                 <Link
                   href="/time-off/allocations"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/time-off/allocations'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Allocations
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/allocations' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Allocations</span>
                 </Link>
                 <Link
                   href="/time-off/types"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/time-off/types'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Time Off Types
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/types' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Time Off Types</span>
                 </Link>
               </div>
             )}
@@ -196,10 +200,10 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
           <div className="space-y-1">
             <button
               onClick={() => toggleMenu('payroll')}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all"
             >
               <div className="flex items-center gap-3">
-                <CreditCard className="w-4 h-4 shrink-0" />
+                <CreditCard className="w-4.5 h-4.5 shrink-0" />
                 <span>Payroll</span>
               </div>
               <ChevronDown
@@ -210,61 +214,66 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
             </button>
 
             {openMenus.payroll && (
-              <div className="pl-9 pr-2 space-y-1 py-1">
+              <div className="pl-6 pr-1 space-y-1 py-1 border-l-2 border-slate-200 ml-5">
                 <Link
                   href="/payroll/dashboard"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/payroll/dashboard'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Dashboard
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/dashboard' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Dashboard</span>
                 </Link>
                 <Link
                   href="/payroll/payruns"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/payroll/payruns'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Payruns
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/payruns' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Payruns</span>
                 </Link>
                 <Link
                   href="/payroll/payslips"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/payroll/payslips'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  Payslips
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/payslips' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Payslips</span>
                 </Link>
                 <Link
                   href="/payroll/structures"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/payroll/structures'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  Salary Structures
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/structures' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Salary Structures</span>
                 </Link>
                 <Link
                   href="/payroll/rules"
                   onClick={handleNavClick}
-                  className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                     pathname === '/payroll/rules'
-                      ? 'text-indigo-600 font-semibold bg-indigo-50'
+                      ? 'text-indigo-600 bg-indigo-50 font-bold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  Salary Rules
+                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/rules' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+                  <span>Salary Rules</span>
                 </Link>
               </div>
             )}
