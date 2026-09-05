@@ -20,6 +20,7 @@ import {
   Calendar,
   CreditCard,
   ChevronRight,
+  ChevronDown,
   X
 } from 'lucide-react';
 
@@ -36,20 +37,36 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const searchContainerRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Close search popover on outside click
+  // Close search popover & user dropdown on outside click or ESC key
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
         setSearchFocused(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
     };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSearchFocused(false);
+        setDropdownOpen(false);
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   // Quick Search Dropdown Items (filtered by role permissions)
@@ -219,39 +236,75 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
         )}
 
         {/* User Menu Dropdown */}
-        <div className="relative">
+        <div ref={userMenuRef} className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 sm:gap-3 p-1 rounded-xl hover:bg-slate-100 transition-all text-left"
+            className={`flex items-center gap-2 sm:gap-2.5 p-1 sm:pr-2.5 rounded-2xl border transition-all cursor-pointer select-none ${
+              dropdownOpen
+                ? 'bg-slate-100/90 border-slate-300 shadow-inner'
+                : 'hover:bg-slate-100 border-transparent hover:border-slate-200'
+            }`}
+            aria-expanded={dropdownOpen}
+            aria-haspopup="true"
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
               {mounted ? getInitials(user?.email || 'User') : 'U'}
             </div>
-            <div className="hidden lg:block">
-              <p className="text-xs font-semibold text-slate-800 leading-tight">
+            <div className="hidden lg:block text-left">
+              <p className="text-xs font-bold text-slate-800 leading-tight">
                 {mounted && user?.email ? user.email.split('@')[0] : 'User'}
               </p>
-              <p className="text-[10px] text-slate-500 leading-tight">{mounted && user?.email ? user.email : ''}</p>
+              <p className="text-[10px] text-slate-500 font-medium leading-tight">
+                {mounted && role ? (ROLE_LABELS[role] || role) : ''}
+              </p>
             </div>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+                dropdownOpen ? 'rotate-180 text-indigo-600' : ''
+              }`}
+            />
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-fade-in">
-              <div className="px-4 py-2 border-b border-slate-100">
-                <p className="text-xs font-semibold text-slate-900">{user?.email}</p>
-                <p className="text-[10px] text-slate-500 font-mono mt-0.5">Role: {role}</p>
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in divide-y divide-slate-100">
+              {/* Profile Card Header */}
+              <div className="p-4 bg-gradient-to-b from-slate-50/80 to-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                    {mounted ? getInitials(user?.email || 'User') : 'U'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {mounted && user?.email ? user.email.split('@')[0] : 'User'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate font-mono mt-0.5">
+                      {mounted && user?.email ? user.email : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 text-[11px] font-semibold w-fit">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{mounted && role ? (ROLE_LABELS[role] || role) : 'User'}</span>
+                </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setDropdownOpen(false);
-                  signOut();
-                }}
-                className="w-full px-4 py-2 text-left text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-all"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign out</span>
-              </button>
+              {/* Sign Out Action */}
+              <div className="p-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    signOut();
+                  }}
+                  className="w-full px-3 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl flex items-center justify-between transition-all group cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <LogOut className="w-4 h-4 text-red-500 group-hover:translate-x-0.5 transition-transform" />
+                    <span>Sign out</span>
+                  </span>
+                  <kbd className="text-[10px] font-mono text-red-400 group-hover:text-red-500">Exit</kbd>
+                </button>
+              </div>
             </div>
           )}
         </div>
