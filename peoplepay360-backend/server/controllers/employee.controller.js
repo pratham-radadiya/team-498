@@ -34,5 +34,11 @@ export async function listEmployeesController(request, session) {
 
 export async function listEmployeeOptionsController() {
   const options = await employeeService.listEmployeeOptions()
-  return Response.json(options.map((e) => ({ id: e.id, label: e.name })))
+  return Response.json(
+    options.map((e) => ({
+      id: e.id,
+      label: e.name,
+      sublabel: e.department ? `${e.department} • ${e.email}` : e.email,
+    }))
+  )
 }

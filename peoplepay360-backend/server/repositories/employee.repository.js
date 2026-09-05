@@ -71,7 +71,7 @@ export function listEmployeesForGrid({ skip, take, orderBy, where }) {
 
 export function listEmployeeOptions() {
   return prisma.employee.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, email: true, department: true },
     orderBy: { name: 'asc' },
   })
 }

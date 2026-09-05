@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { sanitizeDateInput } from '@/lib/formatters';
 import { X, FileText, Save, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 
 export default function ContractFormModal({
   isOpen,
@@ -49,7 +50,7 @@ export default function ContractFormModal({
             endDate: data.endDate ? data.endDate.split('T')[0] : '',
             wage: data.wage !== undefined ? String(data.wage) : '',
             workingScheduleId: data.workingScheduleId || '',
-            structureId: data.structureId || '',
+            salaryStructureId: data.salaryStructureId || data.structureId || '',
             status: data.status || 'Running',
             notes: data.notes || '',
           });
@@ -66,7 +67,7 @@ export default function ContractFormModal({
         endDate: '',
         wage: '',
         workingScheduleId: scheduleOptions.length > 0 ? scheduleOptions[0].id : '',
-        structureId: structureOptions.length > 0 ? structureOptions[0].id : '',
+        salaryStructureId: structureOptions.length > 0 ? structureOptions[0].id : '',
         status: 'Running',
         notes: '',
       });
@@ -111,7 +112,7 @@ export default function ContractFormModal({
         endDate: formData.endDate || null,
         wage: Number(formData.wage),
         workingScheduleId: formData.workingScheduleId || null,
-        structureId: formData.structureId || null,
+        salaryStructureId: formData.salaryStructureId || null,
         status: formData.status,
         notes: formData.notes?.trim() || null,
       };
@@ -191,29 +192,20 @@ export default function ContractFormModal({
             <div className="py-16 text-center text-slate-500 text-sm font-medium">Loading contract details...</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Employee Picker */}
+              {/* Employee Searchable Dropdown */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-slate-800 mb-2">
                   Employee <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    name="employeeId"
-                    value={formData.employeeId}
-                    onChange={handleChange}
-                    required
-                    disabled={!isCreate}
-                    className={`${selectClassName} ${!isCreate ? 'disabled:opacity-60 disabled:cursor-not-allowed' : ''}`}
-                  >
-                    <option value="">Select Employee</option>
-                    {employeeOptions.map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.label} ({opt.id})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-5 h-5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <SearchableSelect
+                  name="employeeId"
+                  value={formData.employeeId}
+                  onChange={handleChange}
+                  options={employeeOptions}
+                  placeholder="Type to search and select an employee..."
+                  required
+                  disabled={!isCreate}
+                />
               </div>
 
               {/* Department & Job Position */}
@@ -313,8 +305,8 @@ export default function ContractFormModal({
                 <label className="block text-sm font-bold text-slate-800 mb-2">Salary Structure</label>
                 <div className="relative">
                   <select
-                    name="structureId"
-                    value={formData.structureId}
+                    name="salaryStructureId"
+                    value={formData.salaryStructureId}
                     onChange={handleChange}
                     className={selectClassName}
                   >

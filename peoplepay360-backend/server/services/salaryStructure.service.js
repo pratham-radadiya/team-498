@@ -1,5 +1,6 @@
 import { NotFoundError } from '../lib/httpErrors'
 import { buildPrismaGridQuery } from '../grid/buildPrismaGridQuery'
+import * as salaryStructureRepo from '../repositories/salaryStructure.repository'
 import * as salaryRuleRepo from '../repositories/salaryRule.repository'
 import { prisma } from '../lib/prisma'
 

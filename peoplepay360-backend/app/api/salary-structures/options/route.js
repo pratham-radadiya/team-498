@@ -3,7 +3,7 @@ import { ROLES } from '@/server/rbac/roles'
 import { handleApiError } from '@/server/lib/httpErrors'
 import { listSalaryStructureOptionsController } from '@/server/controllers/salaryStructure.controller'
 
-const READ_ROLES = [ROLES.HR_PAYROLL_USER, ROLES.HR_PAYROLL_MANAGER, ROLES.ADMIN]
+const READ_ROLES = [ROLES.HR_MANAGER, ROLES.HR_PAYROLL_USER, ROLES.HR_PAYROLL_MANAGER, ROLES.ADMIN]
 
 export async function GET() {
   try {
