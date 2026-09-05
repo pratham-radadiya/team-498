@@ -4,6 +4,17 @@ import { prisma } from './prisma'
 
 export const authOptions = {
   session: { strategy: 'jwt' },
+  // sameSite:'lax' (NextAuth's default) is never sent by browsers on
+  // cross-origin XHR/fetch at all, regardless of CORS headers — needed here
+  // because the frontend runs on a different machine/origin than this
+  // backend (accessed via a tunnel). 'none' requires 'secure: true' (HTTPS),
+  // which the tunnel provides; a real production deploy should keep this,
+  // since it'll be HTTPS there too.
+  cookies: {
+    sessionToken: { name: 'next-auth.session-token', options: { httpOnly: true, sameSite: 'none', path: '/', secure: true } },
+    callbackUrl: { name: 'next-auth.callback-url', options: { sameSite: 'none', path: '/', secure: true } },
+    csrfToken: { name: 'next-auth.csrf-token', options: { httpOnly: true, sameSite: 'none', path: '/', secure: true } },
+  },
   providers: [
     CredentialsProvider({
       name: 'Credentials',
