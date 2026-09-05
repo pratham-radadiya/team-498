@@ -37,6 +37,9 @@ export default function UserFormPage({ userId }) {
       />
       {saveError && <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>}
       <div className="mx-auto w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-6 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+          {mode === "create" ? "Create User" : "Edit User"}
+        </h2>
         <UserForm
           user={user}
           mode={mode}

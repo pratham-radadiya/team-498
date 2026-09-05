@@ -1,21 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { LayoutGrid, List, Plus } from "lucide-react";
 import useRole from "@/hooks/auth/useRole";
 import PageHeader from "@/components/common/PageHeader";
 import EmployeeKanban from "@/components/employees/EmployeeKanban";
 import EmployeeTable from "@/components/employees/EmployeeTable";
+import EmployeeFormModal from "@/components/employees/EmployeeFormModal";
 
 const VIEWS = { KANBAN: "kanban", LIST: "list" };
 
 export default function EmployeesPage() {
   const [view, setView] = useState(VIEWS.KANBAN);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [notice, setNotice] = useState(null);
   const { can } = useRole();
 
   return (
     <div className="flex flex-col gap-4">
+      {notice && (
+        <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+          {notice}
+        </div>
+      )}
       <PageHeader
         title="Employees"
         description="Browse the employee master and open a record to view or edit it."
@@ -50,19 +58,34 @@ export default function EmployeesPage() {
               </button>
             </div>
             {can("employees", "create") && (
-              <Link
-                href="/employees/new"
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
                 className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
               >
                 <Plus className="h-4 w-4" />
                 New Employee
-              </Link>
+              </button>
             )}
           </>
         }
       />
 
-      {view === VIEWS.KANBAN ? <EmployeeKanban /> : <EmployeeTable />}
+      {view === VIEWS.KANBAN ? (
+        <EmployeeKanban key={`kanban-${refreshKey}`} />
+      ) : (
+        <EmployeeTable key={`table-${refreshKey}`} />
+      )}
+
+      <EmployeeFormModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSaved={(employee, info) => {
+          setCreateOpen(false);
+          setRefreshKey((k) => k + 1);
+          setNotice(info?.userError ?? null);
+        }}
+      />
     </div>
   );
 }

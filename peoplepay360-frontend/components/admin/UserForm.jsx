@@ -26,12 +26,13 @@ export default function UserForm({
     formState: { errors },
   } = useForm({
     defaultValues: {
-      email: "",
-      password: "",
-      role: ROLES.EMPLOYEE,
-      employeeId: "",
-      status: EMPLOYEE_STATUS.ACTIVE,
-    },
+  name: "",
+  email: "",
+  password: "",
+  role: ROLES.EMPLOYEE,
+  employeeId: "",
+  status: EMPLOYEE_STATUS.ACTIVE,
+},
   });
 
   useEffect(() => {
@@ -98,11 +99,11 @@ export default function UserForm({
       )}
 
       <FormField label="Role" hint={isSelf ? "You cannot change your own role" : undefined} required>
-        <div className="flex flex-col gap-3 pt-1">
+        <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
           {Object.values(ROLES).map((role) => (
             <label
               key={role}
-              className={`flex items-center gap-3 text-sm text-zinc-800 dark:text-zinc-200 ${
+              className={`flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200 ${
                 isSelf ? "cursor-not-allowed opacity-60" : "cursor-pointer"
               }`}
             >

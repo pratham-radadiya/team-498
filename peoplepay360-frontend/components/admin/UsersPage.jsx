@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import useUsers from "@/hooks/admin/useUsers";
 import PageHeader from "@/components/common/PageHeader";
@@ -8,9 +8,11 @@ import SkeletonTable from "@/components/common/SkeletonTable";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import UserTable from "@/components/admin/UserTable";
+import UserFormModal from "@/components/admin/UserFormModal";
 
 export default function UsersPage() {
   const { users, loading, error, refetch } = useUsers();
+  const [createOpen, setCreateOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
@@ -18,13 +20,14 @@ export default function UsersPage() {
         title="User Management"
         description="Create and manage user accounts linked to employee records."
         actions={
-          <Link
-            href="/admin/users/new"
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
             className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
           >
             <Plus className="h-4 w-4" />
             New User
-          </Link>
+          </button>
         }
       />
 
@@ -39,6 +42,15 @@ export default function UsersPage() {
       ) : (
         <UserTable users={users} />
       )}
+
+      <UserFormModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSaved={() => {
+          setCreateOpen(false);
+          refetch();
+        }}
+      />
     </div>
   );
 }
