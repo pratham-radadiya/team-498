@@ -22,11 +22,13 @@ export default function SalaryStructuresPage() {
     fetchStructureOptions,
     createStructure,
     updateStructure,
+    addRulesToStructure,
     deleteStructure,
   } = useSalaryStructures();
 
   const {
     fetchRuleById,
+    fetchAvailableRuleOptions,
     createRule,
     updateRule,
     deleteRule,
@@ -145,7 +147,10 @@ export default function SalaryStructuresPage() {
         fetchStructureById={fetchStructureById}
         createStructure={createStructure}
         updateStructure={updateStructure}
+        addRulesToStructure={addRulesToStructure}
         deleteStructure={deleteStructure}
+        deleteRule={deleteRule}
+        fetchAvailableRuleOptions={fetchAvailableRuleOptions}
         currentUserRole={currentUserRole}
         onSuccess={handleStructSuccess}
         onAddRule={handleOpenAddRuleModal}

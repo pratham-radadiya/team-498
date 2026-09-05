@@ -40,3 +40,11 @@ export async function listSalaryRulesGrid(gridRequest) {
     rowCount,
   }
 }
+
+export async function listSalaryRuleOptions() {
+  const rules = await salaryRuleRepo.listSalaryRuleOptions()
+  return rules.map(({ structure, ...rest }) => ({
+    ...rest,
+    structureName: structure?.name ?? null,
+  }))
+}

@@ -36,9 +36,6 @@ function daysAgo(n) {
   d.setDate(d.getDate() - n)
   return d
 }
-function pad2(n) {
-  return String(n).padStart(2, '0')
-}
 function monthRange(monthsBack) {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1)
@@ -120,7 +117,9 @@ async function main() {
   await prisma.workingSchedule.deleteMany() // cascades to WorkingScheduleDay
 
   // ============================================================
-  // 3. ANCHORS: Working Schedules (4 curated) + bulk (>=250 total)
+  // 3. ANCHORS: Working Schedules — 4 curated patterns. A real org doesn't
+  // have hundreds of distinct shift patterns, so this stays small and
+  // realistic rather than padded for row count.
   // ============================================================
   const schedule40h = await prisma.workingSchedule.create({
     data: {
@@ -156,39 +155,13 @@ async function main() {
     },
   })
 
-  // Bulk schedules — procedurally varied so the WorkingSchedule table alone
-  // clears 250 rows. Real orgs don't have this many distinct patterns; this
-  // volume exists purely to satisfy an explicit "every table >= 250 rows"
-  // request, not because it's realistic.
-  const CALENDAR_TYPES = ['Standard', 'Flexible', 'Night Shift', 'Part-time', 'Remote', 'Rotational']
-  const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
-  const bulkSchedules = []
-  for (let i = 0; i < 250; i++) {
-    const startHour = faker.number.int({ min: 6, max: 11 })
-    const durationHours = faker.number.int({ min: 4, max: 9 })
-    const breakMinutes = faker.helpers.arrayElement([0, 30, 60])
-    const startTime = `${pad2(startHour)}:00`
-    const endTime = `${pad2(Math.min(startHour + durationHours, 23))}:00`
-    const hours = dayHours(startTime, endTime, breakMinutes)
-    const dayCount = faker.number.int({ min: 3, max: 6 })
-    const days = faker.helpers.arrayElements(WEEKDAYS, dayCount)
-    const sched = await prisma.workingSchedule.create({
-      data: {
-        name: `Schedule ${i + 1} — ${faker.helpers.arrayElement(CALENDAR_TYPES)}`,
-        calendarType: faker.helpers.arrayElement(CALENDAR_TYPES),
-        company: 'PeoplePay360 Inc',
-        status: faker.helpers.arrayElement(['Active', 'Active', 'Active', 'Inactive']),
-        totalWeeklyHours: hours * days.length,
-        days: { create: days.map((day) => ({ day, startTime, endTime, breakMinutes, hours })) },
-      },
-    })
-    bulkSchedules.push(sched)
-  }
   const anchorSchedules = [schedule40h, nightShift, flexibleHybrid, partTime20h]
-  const scheduleAssignPool = [...anchorSchedules, ...bulkSchedules]
+  const scheduleAssignPool = anchorSchedules
 
   // ============================================================
-  // 3. ANCHORS: Salary Structures & Rules (3 curated, hand-verified) + bulk (>=250 total)
+  // 3. ANCHORS: Salary Structures & Rules — a realistic set (9 total), each
+  // hand-crafted with a real rule chain. No procedural padding: a real
+  // payroll setup has a handful of distinct structures, not hundreds.
   // ============================================================
   const regularSalary = await prisma.salaryStructure.create({ data: { name: 'Regular Salary', active: true } })
   await prisma.salaryRule.createMany({
@@ -227,34 +200,82 @@ async function main() {
     ],
   })
 
-  // Bulk structures — same volume rationale as bulk schedules above. Kept
-  // OUT of the Payrun-generation pool below (which uses only the 3
-  // hand-verified structures) so every computed Payslip number stays
-  // trustworthy; these exist for row-count and for Contract/employeeType
-  // filter variety only.
-  const bulkStructures = []
-  for (let i = 0; i < 250; i++) {
-    const structure = await prisma.salaryStructure.create({
-      data: { name: `Salary Structure ${i + 1}`, active: faker.datatype.boolean({ probability: 0.85 }) },
-    })
-    const allowanceAmount = faker.number.int({ min: 500, max: 3000 })
-    const deductionPct = faker.number.int({ min: 2, max: 15 })
-    await prisma.salaryRule.createMany({
-      data: [
-        { structureId: structure.id, name: 'Basic', code: 'BASIC', category: 'Basic', sequence: 1, computationMethod: 'Percentage', percentageBase: 'ContractWage', percentageValue: 100 },
-        { structureId: structure.id, name: 'Allowance', code: 'ALLOW', category: 'Allowance', sequence: 10, computationMethod: 'Fixed', fixedAmount: allowanceAmount },
-        { structureId: structure.id, name: 'Gross', code: 'GROSS', category: 'Gross', sequence: 20, computationMethod: 'Formula', formula: 'categories.BASIC + categories.ALLOW' },
-        { structureId: structure.id, name: 'Deduction', code: 'DED', category: 'Deduction', sequence: 30, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: deductionPct },
-        { structureId: structure.id, name: 'Net', code: 'NET', category: 'Net', sequence: 40, computationMethod: 'Formula', formula: 'categories.GROSS - categories.DED' },
-      ],
-    })
-    bulkStructures.push(structure)
-  }
-  const anchorStructures = [regularSalary, internSalary, contractorStructure]
-  const contractStructurePool = [...anchorStructures, ...bulkStructures]
+  const seniorManagement = await prisma.salaryStructure.create({ data: { name: 'Senior Management', active: true } })
+  await prisma.salaryRule.createMany({
+    data: [
+      { structureId: seniorManagement.id, name: 'Basic Salary', code: 'BASIC', category: 'Basic', sequence: 1, computationMethod: 'Percentage', percentageBase: 'ContractWage', percentageValue: 100 },
+      { structureId: seniorManagement.id, name: 'House Rent Allowance', code: 'HRA', category: 'Allowance', sequence: 10, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: 60 },
+      { structureId: seniorManagement.id, name: 'Leadership Allowance', code: 'LEAD', category: 'Allowance', sequence: 20, computationMethod: 'Fixed', fixedAmount: 5000 },
+      { structureId: seniorManagement.id, name: 'Gross Salary', code: 'GROSS', category: 'Gross', sequence: 30, computationMethod: 'Formula', formula: 'categories.BASIC + categories.HRA + categories.LEAD' },
+      { structureId: seniorManagement.id, name: 'Provident Fund', code: 'PF', category: 'Deduction', sequence: 40, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: 12 },
+      { structureId: seniorManagement.id, name: 'Professional Tax', code: 'PT', category: 'Deduction', sequence: 50, computationMethod: 'Fixed', fixedAmount: 200 },
+      { structureId: seniorManagement.id, name: 'Net Salary', code: 'NET', category: 'Net', sequence: 60, computationMethod: 'Formula', formula: 'categories.GROSS - categories.PF - categories.PT' },
+    ],
+  })
+
+  const salesCommission = await prisma.salaryStructure.create({ data: { name: 'Sales Commission-Based', active: true } })
+  await prisma.salaryRule.createMany({
+    data: [
+      { structureId: salesCommission.id, name: 'Basic Salary', code: 'BASIC', category: 'Basic', sequence: 1, computationMethod: 'Percentage', percentageBase: 'ContractWage', percentageValue: 70 },
+      { structureId: salesCommission.id, name: 'Commission Allowance', code: 'COMM', category: 'Allowance', sequence: 10, computationMethod: 'Fixed', fixedAmount: 3000 },
+      { structureId: salesCommission.id, name: 'Travel Allowance', code: 'TRAVEL', category: 'Allowance', sequence: 20, computationMethod: 'Fixed', fixedAmount: 1500 },
+      { structureId: salesCommission.id, name: 'Gross Salary', code: 'GROSS', category: 'Gross', sequence: 30, computationMethod: 'Formula', formula: 'categories.BASIC + categories.COMM + categories.TRAVEL' },
+      { structureId: salesCommission.id, name: 'Provident Fund', code: 'PF', category: 'Deduction', sequence: 40, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: 12 },
+      { structureId: salesCommission.id, name: 'Net Salary', code: 'NET', category: 'Net', sequence: 50, computationMethod: 'Formula', formula: 'categories.GROSS - categories.PF' },
+    ],
+  })
+
+  const nightShiftStructure = await prisma.salaryStructure.create({ data: { name: 'Night Shift Differential', active: true } })
+  await prisma.salaryRule.createMany({
+    data: [
+      { structureId: nightShiftStructure.id, name: 'Basic Salary', code: 'BASIC', category: 'Basic', sequence: 1, computationMethod: 'Percentage', percentageBase: 'ContractWage', percentageValue: 100 },
+      { structureId: nightShiftStructure.id, name: 'Night Shift Allowance', code: 'NIGHT', category: 'Allowance', sequence: 10, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: 15 },
+      { structureId: nightShiftStructure.id, name: 'Standard Allowance', code: 'STD', category: 'Allowance', sequence: 20, computationMethod: 'Fixed', fixedAmount: 1000 },
+      { structureId: nightShiftStructure.id, name: 'Gross Salary', code: 'GROSS', category: 'Gross', sequence: 30, computationMethod: 'Formula', formula: 'categories.BASIC + categories.NIGHT + categories.STD' },
+      { structureId: nightShiftStructure.id, name: 'Provident Fund', code: 'PF', category: 'Deduction', sequence: 40, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: 12 },
+      { structureId: nightShiftStructure.id, name: 'ESIC', code: 'ESIC', category: 'Deduction', sequence: 50, computationMethod: 'Percentage', percentageBase: 'Gross', percentageValue: 0.75 },
+      { structureId: nightShiftStructure.id, name: 'Net Salary', code: 'NET', category: 'Net', sequence: 60, computationMethod: 'Formula', formula: 'categories.GROSS - categories.PF - categories.ESIC' },
+    ],
+  })
+
+  const remoteWorker = await prisma.salaryStructure.create({ data: { name: 'Remote Worker', active: true } })
+  await prisma.salaryRule.createMany({
+    data: [
+      { structureId: remoteWorker.id, name: 'Basic Salary', code: 'BASIC', category: 'Basic', sequence: 1, computationMethod: 'Percentage', percentageBase: 'ContractWage', percentageValue: 100 },
+      { structureId: remoteWorker.id, name: 'Remote/Internet Allowance', code: 'REMOTE', category: 'Allowance', sequence: 10, computationMethod: 'Fixed', fixedAmount: 2000 },
+      { structureId: remoteWorker.id, name: 'Equipment Allowance', code: 'EQUIP', category: 'Allowance', sequence: 20, computationMethod: 'Fixed', fixedAmount: 1000 },
+      { structureId: remoteWorker.id, name: 'Gross Salary', code: 'GROSS', category: 'Gross', sequence: 30, computationMethod: 'Formula', formula: 'categories.BASIC + categories.REMOTE + categories.EQUIP' },
+      { structureId: remoteWorker.id, name: 'Provident Fund', code: 'PF', category: 'Deduction', sequence: 40, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: 12 },
+      { structureId: remoteWorker.id, name: 'Net Salary', code: 'NET', category: 'Net', sequence: 50, computationMethod: 'Formula', formula: 'categories.GROSS - categories.PF' },
+    ],
+  })
+
+  const probationary = await prisma.salaryStructure.create({ data: { name: 'Probationary', active: true } })
+  await prisma.salaryRule.createMany({
+    data: [
+      { structureId: probationary.id, name: 'Basic Salary', code: 'BASIC', category: 'Basic', sequence: 1, computationMethod: 'Percentage', percentageBase: 'ContractWage', percentageValue: 90 },
+      { structureId: probationary.id, name: 'Gross Salary', code: 'GROSS', category: 'Gross', sequence: 10, computationMethod: 'Formula', formula: 'categories.BASIC' },
+      { structureId: probationary.id, name: 'Provident Fund', code: 'PF', category: 'Deduction', sequence: 20, computationMethod: 'Percentage', percentageBase: 'Basic', percentageValue: 12 },
+      { structureId: probationary.id, name: 'Net Salary', code: 'NET', category: 'Net', sequence: 30, computationMethod: 'Formula', formula: 'categories.GROSS - categories.PF' },
+    ],
+  })
+
+  const apprenticeStipend = await prisma.salaryStructure.create({ data: { name: 'Apprentice Stipend', active: true } })
+  await prisma.salaryRule.createMany({
+    data: [
+      { structureId: apprenticeStipend.id, name: 'Stipend', code: 'BASIC', category: 'Basic', sequence: 1, computationMethod: 'Percentage', percentageBase: 'ContractWage', percentageValue: 100 },
+      { structureId: apprenticeStipend.id, name: 'Gross', code: 'GROSS', category: 'Gross', sequence: 10, computationMethod: 'Formula', formula: 'categories.BASIC' },
+      { structureId: apprenticeStipend.id, name: 'Net', code: 'NET', category: 'Net', sequence: 20, computationMethod: 'Formula', formula: 'categories.GROSS' },
+    ],
+  })
+
+  const anchorStructures = [regularSalary, internSalary, contractorStructure, seniorManagement, salesCommission, nightShiftStructure, remoteWorker, probationary, apprenticeStipend]
+  const contractStructurePool = anchorStructures
 
   // ============================================================
-  // 3. ANCHORS: Time Off Types (3 curated, referenced by logic below) + bulk (>=250 total)
+  // 3. ANCHORS: Time Off Types — a realistic policy set (7 total). No
+  // procedural padding: a real company has a handful of leave types, not
+  // hundreds.
   // ============================================================
   const paidTimeOff = await prisma.timeOffType.create({
     data: { name: 'Paid Time Off', unit: 'Days', requiresAllocation: true, approvalRole: 'Manager', payrollWorkEntry: 'Paid Leave', color: 'blue', status: 'Active' },
@@ -266,21 +287,18 @@ async function main() {
     data: { name: 'Comp Off', unit: 'Hours', requiresAllocation: true, approvalRole: 'Officer', payrollWorkEntry: 'Comp Time', color: 'green', status: 'Active' },
   })
 
-  const LEAVE_ADJECTIVES = ['Regional', 'Festival', 'Compassionate', 'Study', 'Sabbatical', 'Bereavement', 'Jury Duty', 'Voting', 'Relocation', 'Wellness']
-  const LEAVE_NOUNS = ['Leave', 'Off', 'Break', 'Absence']
-  for (let i = 0; i < 250; i++) {
-    await prisma.timeOffType.create({
-      data: {
-        name: `${faker.helpers.arrayElement(LEAVE_ADJECTIVES)} ${faker.helpers.arrayElement(LEAVE_NOUNS)} #${i + 1}`,
-        unit: faker.helpers.arrayElement(['Days', 'Hours']),
-        requiresAllocation: faker.datatype.boolean({ probability: 0.6 }),
-        approvalRole: faker.helpers.arrayElement(['Manager', 'Officer']),
-        payrollWorkEntry: faker.helpers.arrayElement(['Paid Leave', 'Unpaid/Sick', 'Comp Time', null]),
-        color: faker.helpers.arrayElement(['blue', 'red', 'green', 'amber', 'purple', 'teal']),
-        status: faker.helpers.arrayElement(['Active', 'Active', 'Inactive']),
-      },
-    })
-  }
+  await prisma.timeOffType.create({
+    data: { name: 'Maternity Leave', unit: 'Days', requiresAllocation: true, approvalRole: 'Manager', payrollWorkEntry: 'Paid Leave', color: 'purple', status: 'Active' },
+  })
+  await prisma.timeOffType.create({
+    data: { name: 'Paternity Leave', unit: 'Days', requiresAllocation: true, approvalRole: 'Manager', payrollWorkEntry: 'Paid Leave', color: 'teal', status: 'Active' },
+  })
+  await prisma.timeOffType.create({
+    data: { name: 'Bereavement Leave', unit: 'Days', requiresAllocation: false, approvalRole: 'Manager', payrollWorkEntry: 'Paid Leave', color: 'amber', status: 'Active' },
+  })
+  await prisma.timeOffType.create({
+    data: { name: 'Unpaid Leave', unit: 'Days', requiresAllocation: false, approvalRole: 'Officer', payrollWorkEntry: 'Unpaid/Sick', color: 'red', status: 'Active' },
+  })
 
   // ============================================================
   // 3/4. Employees — Employee IS the login account, every row needs role + password.
@@ -570,11 +588,16 @@ async function main() {
   console.log(`Demo logins (all "+tag" aliases of ${GMAIL_BASE}@gmail.com):`)
   for (const u of demoLogins) console.log(`  ${u.email} / ${u.password} (${u.role}${u.status === 'Inactive' ? ', INACTIVE' : ''})`)
 
-  const belowTarget = Object.entries(counts).filter(([k, v]) => k !== 'workingScheduleDays' && v < 250)
+  // WorkingSchedule/TimeOffType/SalaryStructure/SalaryRule are intentionally
+  // small/realistic (a handful of curated rows each), not padded to 250 — a
+  // real org doesn't have hundreds of distinct shift patterns, leave
+  // policies, or salary structures. Every other table still targets 250+.
+  const REALISTIC_SMALL_TABLES = ['workingSchedules', 'workingScheduleDays', 'timeOffTypes', 'salaryStructures', 'salaryRules']
+  const belowTarget = Object.entries(counts).filter(([k, v]) => !REALISTIC_SMALL_TABLES.includes(k) && v < 250)
   if (belowTarget.length > 0) {
     console.warn('⚠️  Tables below the 250-row target:', belowTarget)
   } else {
-    console.log('✅ Every table (except the child WorkingScheduleDay, which scales with WorkingSchedule automatically) has >= 250 rows.')
+    console.log('✅ Every table that should scale with volume has >= 250 rows; WorkingSchedule/TimeOffType/SalaryStructure/SalaryRule are deliberately kept small and realistic instead.')
   }
 }
 

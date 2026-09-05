@@ -77,6 +77,16 @@ export function useSalaryStructures() {
     }
   }, []);
 
+  const addRulesToStructure = useCallback(async (id, ruleIds) => {
+    try {
+      const response = await apiClient.post(`/api/salary-structures/${id}/rules`, { ruleIds });
+      return response.data;
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Failed to add rules to salary structure';
+      throw new Error(msg);
+    }
+  }, []);
+
   return {
     structures,
     totalCount,
@@ -87,6 +97,7 @@ export function useSalaryStructures() {
     fetchStructureById,
     createStructure,
     updateStructure,
+    addRulesToStructure,
     deleteStructure,
   };
 }

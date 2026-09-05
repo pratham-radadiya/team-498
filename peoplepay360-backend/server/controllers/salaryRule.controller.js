@@ -31,3 +31,8 @@ export async function listSalaryRulesController(request) {
   const result = await salaryRuleService.listSalaryRulesGrid(gridRequest)
   return Response.json(result)
 }
+
+export async function listSalaryRuleOptionsController() {
+  const options = await salaryRuleService.listSalaryRuleOptions()
+  return Response.json(options)
+}

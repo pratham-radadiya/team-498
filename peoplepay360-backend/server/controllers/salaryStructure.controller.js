@@ -1,4 +1,4 @@
-import { createSalaryStructureSchema, updateSalaryStructureSchema, salaryStructureListRequestSchema } from '../validators/salaryStructure.validator'
+import { createSalaryStructureSchema, updateSalaryStructureSchema, addRulesToStructureSchema, salaryStructureListRequestSchema } from '../validators/salaryStructure.validator'
 import * as salaryStructureService from '../services/salaryStructure.service'
 
 export async function createSalaryStructureController(request) {
@@ -17,6 +17,13 @@ export async function updateSalaryStructureController(request, id) {
   const body = await request.json()
   const data = updateSalaryStructureSchema.parse(body)
   const structure = await salaryStructureService.updateSalaryStructure(id, data)
+  return Response.json(structure)
+}
+
+export async function addRulesToSalaryStructureController(request, id) {
+  const body = await request.json()
+  const data = addRulesToStructureSchema.parse(body)
+  const structure = await salaryStructureService.addRulesToStructure(id, data.ruleIds)
   return Response.json(structure)
 }
 

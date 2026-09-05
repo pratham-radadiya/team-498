@@ -1,6 +1,7 @@
 import { NotFoundError } from '../lib/httpErrors'
 import { buildPrismaGridQuery } from '../grid/buildPrismaGridQuery'
-import * as salaryStructureRepo from '../repositories/salaryStructure.repository'
+import * as salaryRuleRepo from '../repositories/salaryRule.repository'
+import { prisma } from '../lib/prisma'
 
 const FILTER_FIELD_MAP = {
   name: (filter) => ({ name: { contains: filter.filter, mode: 'insensitive' } }),
@@ -8,7 +9,61 @@ const FILTER_FIELD_MAP = {
 }
 
 export async function createSalaryStructure(data) {
-  return salaryStructureRepo.createSalaryStructure(data)
+  const { ruleIds, ...structureData } = data
+  const structure = await salaryStructureRepo.createSalaryStructure(structureData)
+
+  if (Array.isArray(ruleIds) && ruleIds.length > 0) {
+    const templateRules = await salaryRuleRepo.findRulesByIds(ruleIds)
+    const usedCodes = new Set()
+
+    for (const rule of templateRules) {
+      if (!usedCodes.has(rule.code)) {
+        usedCodes.add(rule.code)
+        await salaryRuleRepo.createSalaryRule({
+          structureId: structure.id,
+          name: rule.name,
+          code: rule.code,
+          category: rule.category,
+          sequence: rule.sequence,
+          computationMethod: rule.computationMethod,
+          fixedAmount: rule.fixedAmount,
+          percentageBase: rule.percentageBase,
+          percentageValue: rule.percentageValue,
+          formula: rule.formula,
+        })
+      }
+    }
+  }
+
+  return salaryStructureRepo.findSalaryStructureById(structure.id)
+}
+
+export async function addRulesToStructure(structureId, ruleIds) {
+  const existing = await salaryStructureRepo.findSalaryStructureById(structureId)
+  if (!existing) throw new NotFoundError('Salary structure not found')
+
+  const existingCodes = new Set((existing.rules || []).map((r) => r.code))
+  const templateRules = await salaryRuleRepo.findRulesByIds(ruleIds)
+
+  for (const rule of templateRules) {
+    if (!existingCodes.has(rule.code)) {
+      existingCodes.add(rule.code)
+      await salaryRuleRepo.createSalaryRule({
+        structureId,
+        name: rule.name,
+        code: rule.code,
+        category: rule.category,
+        sequence: rule.sequence,
+        computationMethod: rule.computationMethod,
+        fixedAmount: rule.fixedAmount,
+        percentageBase: rule.percentageBase,
+        percentageValue: rule.percentageValue,
+        formula: rule.formula,
+      })
+    }
+  }
+
+  return salaryStructureRepo.findSalaryStructureById(structureId)
 }
 
 export async function getSalaryStructure(id) {

@@ -28,3 +28,16 @@ export function listSalaryRulesForGrid({ skip, take, orderBy, where }) {
     prisma.salaryRule.count({ where }),
   ])
 }
+
+export function listSalaryRuleOptions() {
+  return prisma.salaryRule.findMany({
+    orderBy: [{ category: 'asc' }, { sequence: 'asc' }, { name: 'asc' }],
+    include: { structure: { select: { name: true } } },
+  })
+}
+
+export function findRulesByIds(ids) {
+  return prisma.salaryRule.findMany({
+    where: { id: { in: ids } },
+  })
+}

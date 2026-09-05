@@ -67,6 +67,16 @@ export function useSalaryRules() {
     }
   }, []);
 
+  const fetchAvailableRuleOptions = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/api/salary-rules/options');
+      return response.data || [];
+    } catch (err) {
+      console.error('Failed to load salary rule options:', err);
+      return [];
+    }
+  }, []);
+
   return {
     rules,
     totalCount,
@@ -74,6 +84,7 @@ export function useSalaryRules() {
     error,
     fetchRules,
     fetchRuleById,
+    fetchAvailableRuleOptions,
     createRule,
     updateRule,
     deleteRule,
