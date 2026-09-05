@@ -223,15 +223,19 @@ Phase 9 (seed data + final cross-module security gate) closes out after both rou
   - EMPLOYEE role: reading their own assigned WorkingSchedule → **200**; `PATCH` on any WorkingSchedule → **403**; their Contracts grid list is silently forced to their own `employeeId` regardless of filters; `POST /api/employees/[id]/contracts` for a *different* employee's id → **403** "You may only view your own contracts"
   - Found and fixed a real bug during verification: Zod validated `startDate`/`endDate` as plain `"YYYY-MM-DD"` strings, but Prisma's `DateTime` column requires a real `Date`/full ISO datetime — `contract.service.js` now converts both fields once, centrally, before anything reaches the repository
 
-## Phase 3 — Attendance *(Round 1)*
+## Phase 3 — Attendance *(Round 1)* ✅ DONE — see `Docs/api/phase-3-attendance.md` for the full API contract
 
 - **Model:** `Attendance` (employeeId, checkIn, checkOut, workedHours computed, overtime computed vs. schedule, status, notes, correctedBy)
 - **Files:** `attendance.{validator,controller,service,repository}.js`
-- **Routes:** `/api/attendance/list` (POST, AG Grid, scoped by optional `employeeId` filter), `/api/attendance/[id]` (correction, role-gated), `/api/attendance/check-in`, `/api/attendance/check-out` — all behind `withAuth()`
-- **Business rules:** workedHours/overtime derived in `attendance.service.js` from checkIn/checkOut against the employee's WorkingSchedule. Per the permission matrix: EMPLOYEE may only Create + Read their own Attendance (no correction); HR Manager, HR Payroll User, HR Payroll Manager, and Admin all get full CRUD including manual correction (`rbac` guard)
+- **Routes:** `/api/attendance/list` (POST, AG Grid, scoped by optional `employeeId` filter), `/api/attendance/[id]` (GET/PATCH correction/DELETE, role-gated), `/api/attendance/check-in`, `/api/attendance/check-out` — all behind `withAuth()`. Non-EMPLOYEE roles may pass an `employeeId` in the check-in/check-out body to act on someone else's behalf; EMPLOYEE role always acts on their own session, ignoring that field.
+- **Business rules:** workedHours/overtime derived in `attendance.service.js` from checkIn/checkOut against the employee's assigned WorkingSchedule day (matched by weekday); falls back to zero measurable overtime when there's no schedule or no matching day, rather than counting all hours as overtime. Duplicate check-in (already has an open session) and check-out-with-no-open-session both rejected with `409`. Per the permission matrix: EMPLOYEE may only Create + Read their own Attendance (no correction); HR Manager, HR Payroll User, HR Payroll Manager, and Admin all get full CRUD including manual correction (`rbac` guard)
 - **Hook:** `useAttendanceGrid.js`
 - **Agent:** `rain-skill:backend-specialist`
-- **Verify:** check-in → check-out produces correct workedHours; correction attempt by EMPLOYEE role is blocked; grid list paginates correctly with 100+ seeded attendance rows
+- **Verify — all confirmed against the running server + real DB:**
+  - Check-in → check-out (a few seconds apart) → `workedHours` and `overtime` computed correctly (`overtime: 0` since no schedule entry for that weekday); duplicate check-in while open → **409**; check-out with no open session → **409**
+  - Admin corrected a record's `checkIn`/`checkOut` to a synthetic 10-hour Monday shift → `workedHours: 10`, `overtime: 2.5` against the employee's 7.5h Monday schedule entry, `correctedBy` set to the Admin's userId
+  - EMPLOYEE attempting `PATCH`/`DELETE` → **403**; reading their own record → **200**
+  - Bulk-seeded 120 attendance rows directly via Prisma; grid list `rowCount: 122`, page 1 (`0-50`) returned 50 rows, page 3 (`100-150`) correctly returned the remaining 22
 
 ## Phase 4 — Time Off (Types, Allocations, Requests) *(Round 1)*
 

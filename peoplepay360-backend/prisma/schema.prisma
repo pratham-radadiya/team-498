@@ -64,8 +64,9 @@ model Employee {
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
   reports   Employee[] @relation("EmployeeManager")
 
-  user      User?
-  contracts Contract[]
+  user        User?
+  contracts   Contract[]
+  attendances Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -139,6 +140,35 @@ model Contract {
 
   status ContractStatus @default(Running)
   notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AttendanceStatus {
+  Present
+  Absent
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  checkIn  DateTime
+  checkOut DateTime?
+
+  // Both server-computed at check-out (or recomputed on correction) — never
+  // accepted from the client.
+  workedHours Float?
+  overtime    Float?
+
+  status AttendanceStatus @default(Present)
+  notes  String?
+
+  // userId of whoever last made a manual correction via PATCH; null for a
+  // record that only ever went through the normal check-in/check-out flow.
+  correctedBy String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
