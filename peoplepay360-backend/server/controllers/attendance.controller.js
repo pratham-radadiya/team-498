@@ -1,6 +1,13 @@
 import { checkInSchema, checkOutSchema, updateAttendanceSchema, attendanceListRequestSchema } from '../validators/attendance.validator'
 import * as attendanceService from '../services/attendance.service'
 
+export async function getCurrentAttendanceController(request, session) {
+  const url = new URL(request.url)
+  const employeeId = url.searchParams.get('employeeId') ?? undefined
+  const result = await attendanceService.getCurrentAttendance(session, employeeId)
+  return Response.json(result)
+}
+
 export async function checkInController(request, session) {
   const body = await request.json().catch(() => ({}))
   const { employeeId } = checkInSchema.parse(body)

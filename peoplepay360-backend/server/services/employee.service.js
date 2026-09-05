@@ -21,9 +21,19 @@ export async function getEmployee(id, session) {
   if (session.role === ROLES.EMPLOYEE && id !== session.employeeId) {
     throw new ForbiddenError('You may only view your own employee record')
   }
-  const employee = await employeeRepo.findEmployeeById(targetId)
+  const employee = await employeeRepo.findEmployeeByIdWithCounts(targetId)
   if (!employee) throw new NotFoundError('Employee not found')
-  return employee
+
+  const { _count, ...rest } = employee
+  return {
+    ...rest,
+    smartButtonCounts: {
+      contracts: _count.contracts,
+      attendance: _count.attendances,
+      timeOff: _count.timeOffRequests,
+      allocations: _count.allocations,
+    },
+  }
 }
 
 export async function updateEmployee(id, data) {

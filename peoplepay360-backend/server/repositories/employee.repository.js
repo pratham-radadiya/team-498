@@ -8,6 +8,19 @@ export function findEmployeeById(id) {
   return prisma.employee.findUnique({ where: { id } })
 }
 
+// Powers the Employee Form's smart buttons (Contracts/Attendance/Time Off
+// counts) — deferred in Phase 1 until these related models existed.
+export function findEmployeeByIdWithCounts(id) {
+  return prisma.employee.findUnique({
+    where: { id },
+    include: {
+      _count: {
+        select: { contracts: true, attendances: true, timeOffRequests: true, allocations: true },
+      },
+    },
+  })
+}
+
 export function updateEmployee(id, data) {
   return prisma.employee.update({ where: { id }, data })
 }

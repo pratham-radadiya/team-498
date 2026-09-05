@@ -237,21 +237,49 @@ Phase 9 (seed data + final cross-module security gate) closes out after both rou
   - EMPLOYEE attempting `PATCH`/`DELETE` → **403**; reading their own record → **200**
   - Bulk-seeded 120 attendance rows directly via Prisma; grid list `rowCount: 122`, page 1 (`0-50`) returned 50 rows, page 3 (`100-150`) correctly returned the remaining 22
 
-## Phase 4 — Time Off (Types, Allocations, Requests) *(Round 1)*
+## Phase 4 — Time Off (Types, Allocations, Requests) *(Round 1)* ✅ DONE — see `Docs/api/phase-4-time-off.md` for the full API contract
 
-- **Models:** `TimeOffType` (unit enum days/hours, requiresAllocation, approvalRole, payrollWorkEntry flag, color, active), `Allocation` (employeeId, typeId, allocated, taken computed, remaining computed, validity dates, status, approver), `TimeOffRequest` (employeeId, typeId, startDate, endDate, duration, allocationId nullable, reason, status, approver)
+- **Models:** `TimeOffType` (unit enum days/hours, requiresAllocation, approvalRole, payrollWorkEntry flag, color, active), `Allocation` (employeeId, typeId, allocated, taken computed, remaining computed at read-time, validity dates, status, approver), `TimeOffRequest` (employeeId, typeId, startDate, endDate, duration computed, allocationId nullable, reason, status, approver)
 - **Files:** `timeOffType.{validator,controller,service,repository}.js`, `allocation.{…}.js`, `timeOffRequest.{…}.js`
 - **Routes:** `/api/timeoff/types` (+`/list`,`/options`,`/[id]`), `/api/timeoff/allocations` (+`/list`,`/[id]`), `/api/timeoff/requests` (+`/list`,`/[id]`,`/[id]/approve`,`/[id]/refuse`) — all behind `withAuth()`
 - **Business rules:**
-  - Allocation only contributes to balance once approved
-  - Per the mockup's refined wording: for a `TimeOffType` with `requiresAllocation = true`, the employee must already have an available (approved) Allocation with sufficient remaining balance **at Request creation time** — `timeOffRequest.service.js` checks this on `POST`, not only when the request is later approved. A request that fails this check is rejected immediately with a clear error, not left to fail silently at approval
-  - Approving a Request (for a type requiring allocation) atomically decrements the matched Allocation's `taken`/`remaining` in one transaction (`timeOffRequest.service.js`)
-  - Reject a request if remaining balance is insufficient (checked both at creation and re-checked at approval, in case balance changed between submission and approval)
+  - Allocation only contributes to balance once approved; `remaining = allocated - taken` is always computed at read time, never persisted, so the two numbers can't drift apart
+  - Per the mockup's refined wording: for a `TimeOffType` with `requiresAllocation = true`, the employee must already have an available (Approved) Allocation with sufficient remaining balance **at Request creation time** — `timeOffRequest.service.js` checks this on `POST`, not only when the request is later approved. A request that fails this check is rejected immediately with `409`, not left to fail silently at approval. A request maps to exactly **one specific** Allocation (picked deterministically, oldest first) — balance is never summed across multiple Allocations.
+  - `duration` is server-computed from `startDate`/`endDate` (inclusive day count) — never accepted from the client
+  - Approving a Request (for a type requiring allocation) atomically decrements the matched Allocation's `taken` in one transaction (`timeOffRequest.service.js`)
+  - Balance is re-checked **again at approval time** (not just at creation) — a request that was valid on submission can still be rejected at approval if the allocation's balance changed in the meantime (e.g. another request consumed it first)
+  - Approve/refuse are only valid on a `Pending` request — both reject with `409` on an already-Approved/Refused one
 - **Hooks:** `useTimeOffTypesGrid.js`, `useAllocationsGrid.js`, `useTimeOffRequestsGrid.js`
 - **Agent:** `rain-skill:backend-specialist`
-- **Verify:** approve allocation → balance appears; approve request → balance decrements; over-request is rejected; Requests grid filters correctly by Status column
+- **Verify — all confirmed against the running server + real DB:**
+  - Request with no allocation at all → **409**; same request after an allocation exists but is still `Pending` (not yet Approved) → still **409**; after HR approves the allocation → request **201** with `duration: 3`, matched to the correct `allocationId`
+  - A 2nd request for 8 more days succeeded at submission (balance still shows 10 while the first request is only Pending — Pending requests don't reserve balance); a 3rd request for 20 days → **409** (exceeds the 10 allocated)
+  - Admin approved the 3-day request → allocation's `taken` went `0→3`, `remaining` `10→7`; approving the 8-day request next → **409** "no longer has sufficient remaining balance" (re-checked at approval, not just at creation) → refused instead → **200**
+  - EMPLOYEE: blocked (`403`) from creating Types/Allocations and from approving/refusing; could create their own Request; Allocations/Requests grids silently scoped to their own `employeeId`
+  - Double-approve on an already-Approved request → **409** "Only a Pending request can be approved"
+
+### Pending items from earlier phases, completed now
+- **Phase 1's deferred smart-button counts** — `GET /api/employees/[id]` now returns `smartButtonCounts: { contracts, attendance, timeOff, allocations }` via a single Prisma `_count` query. Verified: `{contracts: 2, attendance: 121, timeOff: 0, allocations: 0}` for the test employee at the time.
+- **Phase 3's deferred "current attendance status" gap** — added `GET /api/attendance/current` (`{ isOpen, attendance }`), exactly what the quick check-in/out widget needs. Verified: `isOpen: false` before check-in, `isOpen: true` with the open record right after check-in, back to `false` after check-out.
+
+### Full remaining schema built ahead of the plan, at this point
+Rather than keep upgrading placeholder-string FKs phase by phase (as happened with `workingScheduleId` in Phase 2 and `salaryStructureId` here), **all of Phase 5 and 6's models were added to `schema.prisma` in this same migration**: `SalaryStructure`, `SalaryRule`, `Payrun`, `Payslip`, `PayslipWarning` — with `Contract.salaryStructureId` upgraded from a placeholder string to a real FK now that `SalaryStructure` exists. Phases 5 and 6 below only need to add the service/controller/route layer on top of tables that already exist and are already migrated. `npx prisma validate` was run and one missing back-relation (`Contract.payslips`) was caught and fixed before migrating.
+
+### Mock data seeded (`rain-skill:mock-data-seeding`)
+`prisma/seed.js` (extended, not replaced) now seeds a full deterministic dataset (`faker.seed(12345)`, wipe-and-reseed, guarded against `NODE_ENV=production` and non-local `DATABASE_URL`): 6 Users (one per role, fixed demo credentials, plus one deliberately `Inactive`), 21 Employees, 4 Working Schedules, 26 Contracts (some with Expired+Running history), 252 Attendance rows (30 weekdays × 12 employees), 3 Salary Structures with all 19 Rules (the PDF's exact 12-rule "Regular Salary" chain plus lighter Intern/Contractor structures), 3 Time Off Types, 12 Allocations, 9 Time Off Requests (6 Approved, 2 Pending, 1 Refused). Verified idempotent — re-running produced identical counts. Demo logins:
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@peoplepay360.com` | `Admin@123` | ADMIN |
+| `employee@peoplepay360.com` | `Employee@123` | EMPLOYEE |
+| `hrmanager@peoplepay360.com` | `Manager@123` | HR_MANAGER |
+| `payrolluser@peoplepay360.com` | `Payroll@123` | HR_PAYROLL_USER |
+| `payrollmanager@peoplepay360.com` | `Payroll@123` | HR_PAYROLL_MANAGER |
+| `inactive@peoplepay360.com` | `Employee@123` | EMPLOYEE, status `Inactive` — for testing the deactivated-user rejection |
 
 ## Phase 5 — Salary Structure & Salary Rules (formula engine) *(Round 1)*
+
+**Schema already migrated** (see the note above) — this phase only adds `salaryStructure.{validator,controller,service,repository}.js`, `salaryRule.{…}.js`, and the formula engine on top of the existing tables.
 
 - **Models:** `SalaryStructure` (name, active), `SalaryRule` (structureId, name, code, category enum [Basic/Allowance/Gross/Deduction/Net], sequence, computationMethod enum [Fixed/Percentage/Formula], fixedAmount, percentageBase, percentageValue, formula string)
 - **Files:** `salaryStructure.{validator,controller,service,repository}.js`, `salaryRule.{…}.js`

@@ -64,9 +64,12 @@ model Employee {
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
   reports   Employee[] @relation("EmployeeManager")
 
-  user        User?
-  contracts   Contract[]
-  attendances Attendance[]
+  user             User?
+  contracts        Contract[]
+  attendances      Attendance[]
+  allocations      Allocation[]
+  timeOffRequests  TimeOffRequest[]
+  payslips         Payslip[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -135,11 +138,13 @@ model Contract {
   workingScheduleId String?
   workingSchedule   WorkingSchedule? @relation(fields: [workingScheduleId], references: [id])
 
-  // Placeholder id until Phase 5's SalaryStructure model exists.
   salaryStructureId String?
+  salaryStructure   SalaryStructure? @relation(fields: [salaryStructureId], references: [id])
 
   status ContractStatus @default(Running)
   notes  String?
+
+  payslips Payslip[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -172,4 +177,220 @@ model Attendance {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// Phase 4 — Time Off (Types, Allocations, Requests)
+// ============================================================
+
+enum TimeOffUnit {
+  Days
+  Hours
+}
+
+enum ApprovalRole {
+  Manager
+  Officer
+}
+
+enum TimeOffTypeStatus {
+  Active
+  Inactive
+}
+
+model TimeOffType {
+  id                String            @id @default(cuid())
+  name              String
+  unit              TimeOffUnit       @default(Days)
+  requiresAllocation Boolean          @default(true)
+  approvalRole      ApprovalRole      @default(Manager)
+  // Free-text payroll-integration hook, e.g. "Leave Work Entry" — exact
+  // payroll wiring is out of scope until Phase 6 needs it.
+  payrollWorkEntry  String?
+  color             String?
+  status            TimeOffTypeStatus @default(Active)
+
+  allocations Allocation[]
+  requests    TimeOffRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AllocationStatus {
+  Pending
+  Approved
+  Refused
+}
+
+model Allocation {
+  id         String @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  typeId     String
+  type       TimeOffType @relation(fields: [typeId], references: [id])
+
+  allocated Float
+  // Server-maintained: incremented when a Request against this Allocation is
+  // approved, decremented if that approval is ever reversed. Never client-set.
+  taken     Float @default(0)
+
+  status      AllocationStatus @default(Pending)
+  approverId  String?
+  description String?
+  validFrom   DateTime?
+  validTo     DateTime?
+
+  requests TimeOffRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TimeOffRequestStatus {
+  Pending
+  Approved
+  Refused
+}
+
+model TimeOffRequest {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  typeId     String
+  type       TimeOffType @relation(fields: [typeId], references: [id])
+
+  startDate DateTime
+  endDate   DateTime
+  // Server-computed from startDate/endDate + the type's unit — never client-set.
+  duration  Float
+
+  allocationId String?
+  allocation   Allocation? @relation(fields: [allocationId], references: [id])
+
+  reason     String?
+  status     TimeOffRequestStatus @default(Pending)
+  approverId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// Phase 5 — Salary Structure & Salary Rules
+// ============================================================
+
+model SalaryStructure {
+  id     String  @id @default(cuid())
+  name   String
+  active Boolean @default(true)
+
+  rules     SalaryRule[]
+  contracts Contract[]
+  payruns   Payrun[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SalaryRuleCategory {
+  Basic
+  Allowance
+  Gross
+  Deduction
+  Net
+}
+
+enum SalaryComputationMethod {
+  Fixed
+  Percentage
+  Formula
+}
+
+enum PercentageBase {
+  ContractWage
+  Basic
+  Gross
+}
+
+model SalaryRule {
+  id                String                  @id @default(cuid())
+  structureId       String
+  structure         SalaryStructure         @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  name              String
+  code              String
+  category          SalaryRuleCategory
+  sequence          Int
+  computationMethod SalaryComputationMethod
+
+  fixedAmount     Float?
+  percentageBase  PercentageBase?
+  percentageValue Float?
+  formula         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([structureId, code])
+}
+
+// ============================================================
+// Phase 6 — Payroll: Payrun, Payslip, PDF, Email
+// ============================================================
+
+enum PayrunStatus {
+  Draft
+  Validated
+  Paid
+}
+
+model Payrun {
+  id          String       @id @default(cuid())
+  name        String
+  structureId String
+  structure   SalaryStructure @relation(fields: [structureId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  status      PayrunStatus @default(Draft)
+
+  payslips Payslip[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payslip {
+  id         String   @id @default(cuid())
+  payrunId   String
+  payrun     Payrun   @relation(fields: [payrunId], references: [id])
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  // Snapshot of the contract used for computation — resolved at compute time,
+  // null on a freshly-created (not yet computed) Payslip.
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id])
+
+  status     PayrunStatus @default(Draft)
+  workedDays Float?
+  basic      Float?
+  gross      Float?
+  net        Float?
+  // Rule-by-rule breakdown snapshot: [{ code, category, sequence, amount }, ...].
+  // A computed-at-a-point-in-time snapshot, not independently queried — a
+  // JSON column is the right fit rather than a separate relational model.
+  lines      Json?
+
+  warnings PayslipWarning[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PayslipWarning {
+  id        String  @id @default(cuid())
+  payslipId String
+  payslip   Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  type      String // e.g. "missing_bank", "duplicate"
+  message   String
 }

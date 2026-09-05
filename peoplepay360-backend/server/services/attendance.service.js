@@ -40,6 +40,17 @@ function resolveTargetEmployeeId(session, requestedEmployeeId) {
   return requestedEmployeeId ?? session.employeeId
 }
 
+// Powers the quick check-in/check-out widget's "auto-detect open session"
+// behavior — deferred in Phase 3, completed now. `isOpen: false` means the
+// widget should show "Check In"; `true` means "Check Out" + elapsed time
+// (computed client-side from `checkIn`, this endpoint doesn't recompute it).
+export async function getCurrentAttendance(session, requestedEmployeeId) {
+  const employeeId = resolveTargetEmployeeId(session, requestedEmployeeId)
+  if (!employeeId) return { isOpen: false, attendance: null }
+  const open = await attendanceRepo.findOpenAttendance(employeeId)
+  return { isOpen: Boolean(open), attendance: open }
+}
+
 export async function checkIn(session, requestedEmployeeId) {
   const employeeId = resolveTargetEmployeeId(session, requestedEmployeeId)
   if (!employeeId) throw new ConflictError('No employee record to check in for')
