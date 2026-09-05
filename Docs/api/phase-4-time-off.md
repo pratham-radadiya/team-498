@@ -122,3 +122,44 @@ Per the mockup: everything below lives under one **`Time Off ▼`** nav dropdown
 | **Attendance quick-action widget** | `GET /api/attendance/current` on load/poll to decide Check In vs Check Out button state |
 
 `hooks/useTimeOffTypesGrid.js`, `useAllocationsGrid.js`, `useTimeOffRequestsGrid.js` wrap their `/list` endpoints as AG Grid `IDatasource`s.
+
+---
+
+## Where to call which API — trigger-by-trigger
+
+### Time Off Types (policy config — HR/Admin manage, everyone reads)
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Time Off Types List mounts / grid interaction | `POST /api/timeoff/types/list` | via `useTimeOffTypesGrid.js` | all roles see this, including Employee (read-only) |
+| Any Allocation/Request form's Type dropdown mounts | `GET /api/timeoff/types/options` | once on mount, cache for the session | populate dropdown — Active only |
+| HR/Admin clicks a Type row | `GET /api/timeoff/types/[id]` | on navigation in | populate the form |
+| HR/Admin clicks **Save** (new or edit) | `POST /api/timeoff/types` / `PATCH /api/timeoff/types/[id]` | on submit — hide/disable this whole form for Employee role, since the API 403s anyway | `201`/`200` → back to list |
+| HR/Admin clicks **Delete** | `DELETE /api/timeoff/types/[id]` | after confirm | `204` → remove from list |
+
+### Allocations (HR-granted balances)
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Allocations List mounts / grid interaction | `POST /api/timeoff/allocations/list` | via `useAllocationsGrid.js` — EMPLOYEE role is forced to their own rows automatically | render the Allocated/Taken/Remaining columns straight from the response, `remaining` is never computed client-side |
+| Allocation Form mounts | `GET /api/employees/options` + `GET /api/timeoff/types/options` | on mount, for the two pickers | populate dropdowns |
+| HR/Admin clicks **Save** (new allocation) | `POST /api/timeoff/allocations` | on submit — status defaults to `Pending` | `201` → the allocation does **not** count toward balance yet; the UI should make clear a separate Approve step is needed |
+| HR/Admin clicks **Approve** on a Pending allocation | `PATCH /api/timeoff/allocations/[id]` with `{"status": "Approved"}` | on click, from either the list row action or the Form | `200` → now counts toward balance for Request creation |
+| HR/Admin clicks **Delete** | `DELETE /api/timeoff/allocations/[id]` | after confirm | `204` → remove from list |
+| Employee views their own allocations (read-only) | `POST /api/timeoff/allocations/list` | same call as above — no separate "my allocations" endpoint, the server scopes it automatically for EMPLOYEE role | render read-only, no edit/delete controls for this role |
+
+### Time Off Requests
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Requests List mounts / grid interaction | `POST /api/timeoff/requests/list` | via `useTimeOffRequestsGrid.js` — EMPLOYEE forced to own rows | inline **Approve**/**Refuse** row actions only render for HR Manager+ roles |
+| Request Form mounts (Employee creating their own) | `GET /api/timeoff/types/options` | on mount | no Employee picker needed — EMPLOYEE role's own `employeeId` is always used, hide that field entirely for this role |
+| Request Form mounts (HR/Admin creating on someone's behalf) | `GET /api/employees/options` + `GET /api/timeoff/types/options` | on mount | show the Employee picker for these roles only |
+| User clicks **Submit Request** | `POST /api/timeoff/requests` | on submit | `201` → show "Allocation Used" from the response's `allocationId`, never picked client-side. **`409`** (insufficient balance) → surface the server's message directly (it already names the type and duration needed) as a form-level error |
+| HR Manager+ clicks **Approve** (row action or detail view) | `POST /api/timeoff/requests/[id]/approve` | on click | `200` → row flips to Approved. **`409`** can mean either "not Pending anymore" (someone else already acted) or "balance no longer sufficient" (a race with another request) — re-fetch the row/list on `409` rather than assuming which one happened |
+| HR Manager+ clicks **Refuse** | `POST /api/timeoff/requests/[id]/refuse` | on click | `200` → row flips to Refused, no balance change |
+| HR Manager+ clicks **Delete** | `DELETE /api/timeoff/requests/[id]` | after confirm | `204` → remove from list |
+
+### Employee Form smart buttons + Attendance widget (this phase's completed pending items)
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Employee Form loads | `GET /api/employees/[id]` | on navigation in (same call as Phase 1 — no new request needed) | `smartButtonCounts.timeOff` / `.allocations` now populate those two buttons' badges for free |
+| User clicks **"Time Off N"** / **"Allocations N"** smart button | `POST /api/timeoff/requests/list` / `POST /api/timeoff/allocations/list` with `filterModel.employeeId` forced client-side | on click | not a dedicated scoped route yet (same pattern as Phase 2/3's smart buttons) — server-side EMPLOYEE scoping double-enforces regardless |
+| Attendance quick-action widget mounts, or on a polling interval | `GET /api/attendance/current` | on mount / interval | this is the endpoint Phase 3's widget was waiting on — use it instead of inferring "is a session open" from `POST /api/attendance/list` |

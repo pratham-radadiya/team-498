@@ -102,3 +102,34 @@ HR Payroll Manager, Admin only. **`409`** if the parent Payrun is Paid.
 | **Employee Form → "Payslips" area** (Employee's own self-view) | `POST /api/payslips/list` scoped by the API itself when the viewer is an EMPLOYEE |
 
 No dedicated Payrun/Payslip hook names were listed in `Docs/hr-payroll-backend.md` beyond `usePayrunsGrid.js`/`usePayslipsGrid.js` — same AG Grid `IDatasource` pattern as every other phase.
+
+---
+
+## Where to call which API — trigger-by-trigger
+
+### Payrun creation wizard
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Wizard step 1 (Structure + Period) — user clicks **Continue** | none | on click | just advances local wizard state; nothing is persisted until the final "Create Payrun" click on step 2 |
+| Wizard step 2 mounts (arriving from step 1) | `POST /api/payruns/eligible-employees` with step 1's `periodStart`/`periodEnd` | on entering step 2 | populate the checkbox table (name, workingHours, startDate, wage per row) |
+| User checks/unchecks rows, then clicks **Create Payrun** | `POST /api/payruns` with `name`, `structureId`, `periodStart`, `periodEnd`, and `employeeIds` = the checked rows | on final submit only — this is the one call in the whole wizard that actually persists anything | `201` → navigate to the new Payrun's detail page. It's created in `Draft` with un-computed Payslips |
+
+### Payrun list + detail
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Payroll → Payruns List mounts / grid interaction | `POST /api/payruns/list` | via `usePayrunsGrid.js` | render Name/Period/`payslipCount`/Status; a warning indicator needs per-row warning data the list response doesn't carry yet — compute it lazily per row on hover/expand, or defer the indicator until the list response adds it |
+| User clicks a Payrun row | `GET /api/payruns/[id]` | on navigation in | populates header + the full `payslips[]` (each with `warnings[]`) + `structure` |
+| User clicks **Compute** | `POST /api/payruns/[id]/compute` | on click — disable this button once `status` is `Paid` (matches the API's own `409`) | `200` → refresh the whole detail view from the response; warnings shown per-payslip are a full replace, not additive, so just re-render from what came back |
+| User clicks **Validate** | `POST /api/payruns/[id]/validate` | on click — only enable while `status === "Draft"` | `200` → status flips to Validated, re-render |
+| User clicks **Mark Paid** | `POST /api/payruns/[id]/mark-paid` | on click — only enable while `status === "Validated"` | `200` → status flips to Paid; from this point, hide/disable Compute/Validate/Delete for every role including Admin |
+| User clicks **Send Payslips** | `POST /api/payruns/[id]/send-payslips` | on click — only enable once `status === "Paid"` | `200` with `{sent, results[]}` — show a per-employee sent/failed summary from `results`, don't just show a generic "done" toast |
+| User clicks **Delete** on a Payrun | `DELETE /api/payruns/[id]` | after confirm — hide this control once `status === "Paid"`, and never show it to HR Payroll User | `204` → back to list. **`409`** if somehow reached on a Paid Payrun anyway |
+
+### Payslips
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Payroll → Payslips global list mounts / grid interaction | `POST /api/payslips/list` | via `usePayslipsGrid.js` — EMPLOYEE role forced to their own rows automatically | render rows; HR Manager should never reach this screen (`403`) — hide the nav entry for that role |
+| Employee Form's "Payslips" self-view section mounts | `POST /api/payslips/list` | same call as above — the server-side EMPLOYEE scoping is what makes this "just their own" without any special client filtering | render as a read-only list |
+| User clicks a Payslip row | `GET /api/payslips/[id]` | on navigation in | populate header + `lines[]` breakdown table (Basic/Allowances/Deductions/Gross/Net) |
+| User clicks **Print Payslip** | `GET /api/payslips/[id]/pdf` | on click — link/open in a new tab rather than `fetch`, since the response is a binary PDF with `Content-Disposition: attachment` | browser handles the download natively |
+| HR Payroll Manager/Admin clicks **Delete** on a Payslip | `DELETE /api/payslips/[id]` | after confirm — hide for HR Payroll User (no delete grant) and once the parent Payrun is Paid | `204` → remove from list. **`409`** if the parent Payrun turned out to be Paid |

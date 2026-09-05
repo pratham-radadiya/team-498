@@ -122,3 +122,26 @@ This is what the Employee Form's **Contracts** smart button hits.
 | **Employee Form → "Contracts N" smart button** | `POST /api/employees/[id]/contracts` (scoped grid) |
 
 `hooks/useWorkingSchedulesGrid.js` and `hooks/useContractsGrid.js` wrap their respective `/list` endpoints as AG Grid `IDatasource`s, per the grid contract in `Docs/hr-payroll-backend.md`. Any dropdown/picker component (Manager, Working Schedule) should be a small shared component that takes an `optionsUrl` prop and calls it once on mount — the same component serves the Employee Form's Manager field and the Contract Form's Working Schedule field.
+
+---
+
+## Where to call which API — trigger-by-trigger
+
+### Working Schedules
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Working Schedule List page mounts, or grid sort/filter/scroll fires | `POST /api/working-schedules/list` | via AG Grid's `IDatasource` (`useWorkingSchedulesGrid.js`) — never call manually | render rows |
+| Any form with a Working Schedule dropdown mounts (Employee Form, Contract Form) | `GET /api/working-schedules/options` | once on mount, cache for the session (schedules rarely change) | populate dropdown — Active only |
+| User clicks a schedule row | `GET /api/working-schedules/[id]` | on navigation into the Form | populate name/calendarType/company/status + the `days[]` table |
+| User clicks **Add Day** / edits a day row, then **Save** | `POST /api/working-schedules` (new) or `PATCH /api/working-schedules/[id]` (edit) | on submit, with the full `days[]` array — sending `days` **replaces the whole set**, so always submit the complete table, not just the changed row | `hours` per day and `totalWeeklyHours` come back server-computed — overwrite whatever the form displayed locally, never trust a client-side calculation for the footer total |
+| User clicks **Delete** on a schedule | `DELETE /api/working-schedules/[id]` | after confirm | `204` → remove from list. Note: this has no built-in guard against deleting a schedule still assigned to Employees/Contracts — confirm dialog copy should warn about that until/unless the backend adds a check |
+
+### Contracts
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Contracts List page mounts / grid interaction | `POST /api/contracts/list` | via `useContractsGrid.js` `IDatasource` | render rows; a "Running" status badge/highlight is a pure client-side render of the `status` field, no extra call |
+| Contract Form mounts (new or edit) | `GET /api/contracts/[id]` (edit only) | on navigation in | populate fields. Employee field uses `GET /api/employees/options`, Working Schedule field uses `GET /api/working-schedules/options` — both already cached if the page loaded them earlier |
+| User clicks **Save** (new contract) | `POST /api/contracts` | on submit | `201` → navigate to the new record. **`409`** ("already has a Running contract that overlaps this period") → surface as a form-level error, not a field error — the fix is usually to expire the old contract first, not to change this form's own inputs |
+| User clicks **Save** (edit) | `PATCH /api/contracts/[id]` | on submit | same `409` handling as above applies again, since the overlap check re-runs (excluding this contract itself) |
+| User clicks **Delete** | `DELETE /api/contracts/[id]` | after confirm | `204` → remove from list |
+| User opens an Employee Form and clicks the **"Contracts N"** smart button | `POST /api/employees/[id]/contracts` | on click | opens a Contracts list scoped to that employee — `employeeId` is forced server-side, so don't also try to set `filterModel.employeeId` client-side (harmless if you do, but redundant) |

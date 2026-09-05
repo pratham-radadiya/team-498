@@ -95,3 +95,32 @@ computeSalaryRules(rules, { wage, workedDays })
 | **Contract Form → Salary Structure field** (dropdown) | `GET /api/salary-structures/options` — **note:** this endpoint 403s for HR Manager per the matrix; if HR Manager needs to set a Contract's salary structure, the Contract Form will need a fallback for that role (flagged above, not resolved) |
 
 No hook file yet for this phase's grids in the plan's hook list (`useSalaryStructuresGrid.js`, `useSalaryRulesGrid.js` are named in `Docs/hr-payroll-backend.md`) — same AG Grid `IDatasource` wrapper pattern as every other phase.
+
+---
+
+## Where to call which API — trigger-by-trigger
+
+Every screen in this phase is gated to HR Payroll User/Manager/Admin (read varies, write is Manager/Admin only) — the whole nav section should be hidden for Employee and HR Manager, not just the buttons inside it.
+
+### Salary Structures
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Payroll → Structures List mounts / grid interaction | `POST /api/salary-structures/list` | for HR Payroll User/Manager/Admin only — hide the nav entry for HR Manager/Employee rather than letting them hit a `403` | render Name/Rules/Employees/Active columns straight from the row (`ruleCount`, `employeeCount` are server-computed) |
+| Structure Form mounts (new) | none | — | just the Name + Active fields, no data to load |
+| Structure Form mounts (edit) | `GET /api/salary-structures/[id]` | on navigation in | populates the structure fields **and** the ordered `rules[]` table shown inside the same form |
+| HR Payroll Manager/Admin clicks **Save** on the structure itself | `PATCH /api/salary-structures/[id]` (edit) or the create happens via `POST /api/salary-structures` first, before rules can be added | on submit | rule rows are saved independently via the Salary Rule endpoints below, not as part of this call |
+| HR Payroll Manager/Admin clicks **Delete** | `DELETE /api/salary-structures/[id]` | after confirm | `204` → remove from list |
+| Contract Form's Salary Structure dropdown mounts | `GET /api/salary-structures/options` | on mount | **HR Manager gets `403` here** per the matrix — if HR Manager can open a Contract Form at all, this dropdown needs a fallback (disabled with an explanatory tooltip, or omit the field for that role) until the permission gap itself is resolved |
+
+### Salary Rules (managed from inside a Structure's Form)
+| Trigger | Call | When | Then |
+|---|---|---|---|
+| Structure Form's rules table renders | `POST /api/salary-rules/list` with `filterModel.structureId` set to the open structure | on the same navigation-in as the Structure load, right after `GET /api/salary-structures/[id]` (or combine — that response already includes `rules[]`, so a separate list call is usually redundant here) | default-sorted by `sequence` if no explicit sort is applied |
+| Payroll → Rules List (the standalone global list, not scoped to one structure) | `POST /api/salary-rules/list` | on mount / grid interaction | shows Structure as a column since rows span structures |
+| User clicks **Add Rule** / opens a rule row | `GET /api/salary-rules/[id]` (edit only) | on navigation in | show/hide `fixedAmount` vs `percentageBase`+`percentageValue` vs `formula` based on the loaded `computationMethod` |
+| User changes the **Computation Method** dropdown mid-edit | none | on change, client-side only | swap which fields are visible; remember that on **Save**, all of the newly-selected method's required fields must be included in the same request — the API only looks at the current request body, not what's already stored |
+| User clicks **Save** (new or edit) | `POST /api/salary-rules` / `PATCH /api/salary-rules/[id]` | on submit | `400` → map to whichever conditional field is missing for the selected method |
+| User clicks **Delete** on a rule | `DELETE /api/salary-rules/[id]` | after confirm | `204` → remove from the structure's rule table |
+
+### The compute engine
+Not called directly from the frontend at all in this phase — it's consumed server-side by Phase 6's `POST /api/payruns/[id]/compute`. No UI trigger here.
