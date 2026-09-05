@@ -189,7 +189,7 @@ async function main() {
   const schedules = [schedule40h, nightShift, flexibleHybrid, partTime20h]
   const structures = [regularSalary, internSalary, contractorStructure]
 
-  async function makeEmployee({ name, email, department, jobPosition, workingScheduleId }) {
+  async function makeEmployee({ name, email, department, jobPosition, workingScheduleId, bankAccount }) {
     return prisma.employee.create({
       data: {
         name,
@@ -199,27 +199,45 @@ async function main() {
         workLocation: faker.helpers.arrayElement(['Head Office', 'Remote', 'Branch Office']),
         company: 'PeoplePay360 Inc',
         workingScheduleId,
+        // Phase 6's "missing bank details" Payrun warning needs this to
+        // genuinely be null for at least one employee — default to a
+        // generated account number, but callers can pass `null` explicitly.
+        bankAccount: bankAccount === undefined ? faker.finance.accountNumber(12) : bankAccount,
         status: 'Active',
       },
     })
   }
 
-  const empDemo = await makeEmployee({ name: 'Aarav Mehta', email: 'aarav@peoplepay360.com', department: 'Engineering', jobPosition: 'Developer', workingScheduleId: schedule40h.id })
-  const hrManagerEmp = await makeEmployee({ name: 'Priya Sharma', email: 'priya@peoplepay360.com', department: 'HR', jobPosition: 'HR Officer', workingScheduleId: schedule40h.id })
-  const payrollUserEmp = await makeEmployee({ name: 'Rohan Gupta', email: 'rohan@peoplepay360.com', department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id })
-  const payrollManagerEmp = await makeEmployee({ name: 'Neha Verma', email: 'neha@peoplepay360.com', department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id })
-  const inactiveEmp = await makeEmployee({ name: 'Karan Singh', email: 'karan@peoplepay360.com', department: 'Support', jobPosition: 'Support Engineer', workingScheduleId: flexibleHybrid.id })
+  // All demo accounts route to the same real inbox via Gmail's "+tag"
+  // addressing (g00998650+admin@gmail.com etc. all deliver to
+  // g00998650@gmail.com) — login/identity data only. This does NOT make the
+  // Phase 6 "Send Payslips" emails actually arrive there: those go through a
+  // fake Ethereal test SMTP account (see Docs/hr-payroll-backend.md Phase 6),
+  // which never delivers externally regardless of the `to` address.
+  const GMAIL_BASE = 'g00998650'
+  const gmailAlias = (tag) => `${GMAIL_BASE}+${tag}@gmail.com`
 
+  const empDemo = await makeEmployee({ name: 'Aarav Mehta', email: gmailAlias('employee'), department: 'Engineering', jobPosition: 'Developer', workingScheduleId: schedule40h.id })
+  const hrManagerEmp = await makeEmployee({ name: 'Priya Sharma', email: gmailAlias('hrmanager'), department: 'HR', jobPosition: 'HR Officer', workingScheduleId: schedule40h.id })
+  const payrollUserEmp = await makeEmployee({ name: 'Rohan Gupta', email: gmailAlias('payrolluser'), department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id })
+  const payrollManagerEmp = await makeEmployee({ name: 'Neha Verma', email: gmailAlias('payrollmanager'), department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id })
+  const inactiveEmp = await makeEmployee({ name: 'Karan Singh', email: gmailAlias('inactive'), department: 'Support', jobPosition: 'Support Engineer', workingScheduleId: flexibleHybrid.id })
+
+  // Realistic small-team org structure: HR Manager is the root; everyone else
+  // (including the Admin's own linked employee, if any) reports to her.
   await prisma.employee.update({ where: { id: empDemo.id }, data: { managerId: hrManagerEmp.id } })
+  await prisma.employee.update({ where: { id: payrollUserEmp.id }, data: { managerId: hrManagerEmp.id } })
+  await prisma.employee.update({ where: { id: payrollManagerEmp.id }, data: { managerId: hrManagerEmp.id } })
+  await prisma.employee.update({ where: { id: inactiveEmp.id }, data: { managerId: hrManagerEmp.id } })
 
   const demoUsers = [
-    { email: 'admin@peoplepay360.com', password: 'Admin@123', role: 'ADMIN', employeeId: null },
-    { email: 'employee@peoplepay360.com', password: 'Employee@123', role: 'EMPLOYEE', employeeId: empDemo.id },
-    { email: 'hrmanager@peoplepay360.com', password: 'Manager@123', role: 'HR_MANAGER', employeeId: hrManagerEmp.id },
-    { email: 'payrolluser@peoplepay360.com', password: 'Payroll@123', role: 'HR_PAYROLL_USER', employeeId: payrollUserEmp.id },
-    { email: 'payrollmanager@peoplepay360.com', password: 'Payroll@123', role: 'HR_PAYROLL_MANAGER', employeeId: payrollManagerEmp.id },
+    { email: gmailAlias('admin'), password: 'Admin@123', role: 'ADMIN', employeeId: null },
+    { email: gmailAlias('employee'), password: 'Employee@123', role: 'EMPLOYEE', employeeId: empDemo.id },
+    { email: gmailAlias('hrmanager'), password: 'Manager@123', role: 'HR_MANAGER', employeeId: hrManagerEmp.id },
+    { email: gmailAlias('payrolluser'), password: 'Payroll@123', role: 'HR_PAYROLL_USER', employeeId: payrollUserEmp.id },
+    { email: gmailAlias('payrollmanager'), password: 'Payroll@123', role: 'HR_PAYROLL_MANAGER', employeeId: payrollManagerEmp.id },
     // Edge case: an Inactive user — proves withAuth()'s per-request DB re-check rejects them.
-    { email: 'inactive@peoplepay360.com', password: 'Employee@123', role: 'EMPLOYEE', employeeId: inactiveEmp.id, status: 'Inactive' },
+    { email: gmailAlias('inactive'), password: 'Employee@123', role: 'EMPLOYEE', employeeId: inactiveEmp.id, status: 'Inactive' },
   ]
   for (const u of demoUsers) {
     const passwordHash = await bcrypt.hash(u.password, 10)
@@ -238,6 +256,10 @@ async function main() {
       department: faker.helpers.arrayElement(departments),
       jobPosition: faker.helpers.arrayElement(jobPositions),
       workingScheduleId: faker.helpers.arrayElement(schedules).id,
+      // First bulk employee deliberately has no bankAccount — this is now the
+      // "missing bank details" Payrun warning demo case (moved off the named
+      // anchor employees, who all have complete profiles per request).
+      ...(i === 0 ? { bankAccount: null } : {}),
     })
     // A few report to the HR Manager, for realistic org structure.
     if (i % 3 === 0) {
@@ -404,7 +426,7 @@ async function main() {
   }
   console.log('Seed complete. Row counts:', counts)
   console.log('Time off requests by status:', requestCount)
-  console.log('Demo logins (all @peoplepay360.com):')
+  console.log(`Demo logins (all "+tag" aliases of ${GMAIL_BASE}@gmail.com — real inbox, but Send Payslips emails still go through the fake Ethereal test SMTP account, not here):`)
   for (const u of demoUsers) console.log(`  ${u.email} / ${u.password} (${u.role}${u.status === 'Inactive' ? ', INACTIVE' : ''})`)
 }
 

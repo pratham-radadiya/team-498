@@ -6,6 +6,24 @@ All endpoints below require a valid NextAuth session (`withAuth()`); a request w
 
 ---
 
+## Auth endpoints (built into NextAuth's catch-all route — not custom code)
+
+These come for free from `NextAuth(authOptions)` in `app/api/auth/[...nextauth]/route.js`; nothing under `server/` implements them.
+
+### `GET /api/auth/csrf` — get a CSRF token
+Required as a form field on the two POSTs below.
+
+### `POST /api/auth/callback/credentials` — log in
+Body (`application/x-www-form-urlencoded`): `csrfToken`, `email`, `password`, `json=true`. Sets the `next-auth.session-token` cookie on success.
+
+### `POST /api/auth/signout` — log out
+Body: `csrfToken`, `json=true`. **Verified:** clears the session cookie (`Set-Cookie: next-auth.session-token=; Max-Age=0`); a session check immediately after returns `{}`.
+
+### `GET /api/auth/session` — read the current session
+Returns `{}` if not logged in, or `{ "user": { userId, email, role, employeeId }, "expires" }` if logged in.
+
+---
+
 ## Employee endpoints
 
 ### `POST /api/employees` — create an employee
