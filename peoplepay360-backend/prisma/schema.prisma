@@ -56,14 +56,89 @@ model Employee {
   workLocation String?
   company     String?
 
-  // Real FK once WorkingSchedule exists (Phase 2); placeholder id for now.
+  // Phase 2: now a real FK — WorkingSchedule exists.
   workingScheduleId String?
+  workingSchedule   WorkingSchedule? @relation(fields: [workingScheduleId], references: [id])
 
   managerId String?
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
   reports   Employee[] @relation("EmployeeManager")
 
-  user User?
+  user      User?
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum WeekDay {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum WorkingScheduleStatus {
+  Active
+  Inactive
+}
+
+model WorkingSchedule {
+  id               String                @id @default(cuid())
+  name             String
+  calendarType     String?
+  company          String?
+  status           WorkingScheduleStatus @default(Active)
+  // Server-computed from `days` on every create/update — never accepted from the client.
+  totalWeeklyHours Float                 @default(0)
+
+  days      WorkingScheduleDay[]
+  employees Employee[]
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkingScheduleDay {
+  id                String          @id @default(cuid())
+  workingScheduleId String
+  workingSchedule   WorkingSchedule @relation(fields: [workingScheduleId], references: [id], onDelete: Cascade)
+  day               WeekDay
+  startTime         String // "HH:mm"
+  endTime           String // "HH:mm"
+  breakMinutes      Int             @default(0)
+  // Server-computed: (endTime - startTime) - breakMinutes, in hours.
+  hours             Float
+}
+
+enum ContractStatus {
+  Running
+  Expired
+}
+
+model Contract {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  department  String?
+  jobPosition String?
+  startDate   DateTime
+  endDate     DateTime?
+  wage        Float
+
+  workingScheduleId String?
+  workingSchedule   WorkingSchedule? @relation(fields: [workingScheduleId], references: [id])
+
+  // Placeholder id until Phase 5's SalaryStructure model exists.
+  salaryStructureId String?
+
+  status ContractStatus @default(Running)
+  notes  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -3,6 +3,7 @@ import { UnauthorizedError, ForbiddenError } from '../rbac/guards'
 
 export class NotFoundError extends Error {}
 export class ConflictError extends Error {}
+export class ValidationError extends Error {}
 
 // Central place every controller funnels caught errors through, so status
 // codes stay consistent across all modules (see nodejs-best-practices skill's
@@ -22,6 +23,9 @@ export function handleApiError(err) {
   }
   if (err instanceof ConflictError) {
     return Response.json({ error: err.message }, { status: 409 })
+  }
+  if (err instanceof ValidationError) {
+    return Response.json({ error: err.message }, { status: 400 })
   }
   console.error(err)
   return Response.json({ error: 'Internal server error' }, { status: 500 })

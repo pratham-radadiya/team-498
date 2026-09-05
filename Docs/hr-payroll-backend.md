@@ -203,18 +203,25 @@ Phase 9 (seed data + final cross-module security gate) closes out after both rou
   - Admin attempting to `PATCH` **their own** role → **403** "You cannot change your own role"; Admin changing a *different* user's role → succeeds
   - Confirmed the smart-button-counts deferral above didn't silently ship half-working code — it's simply not called anywhere yet
 
-## Phase 2 — Working Schedule + Contract *(Round 1)*
+## Phase 2 — Working Schedule + Contract *(Round 1)* ✅ DONE — see `Docs/api/phase-2-working-schedule-contract.md` for the full API contract
 
-- **Models:** `WorkingSchedule` (name, **calendarType** — per mockup's list-view column, e.g. Standard/Night Shift/Flexible — a plain label field, not a separate lookup table, company, status) + `WorkingScheduleDay` (day, start, end, break), `Contract`
+- **Models:** `WorkingSchedule` (name, **calendarType** — per mockup's list-view column, e.g. Standard/Night Shift/Flexible — a plain label field, not a separate lookup table, company, status) + `WorkingScheduleDay` (day, start, end, break), `Contract`. `Employee.workingScheduleId` upgraded from Phase 1's placeholder plain string to a real Prisma FK relation now that `WorkingSchedule` exists.
 - **Files:** `workingSchedule.{validator,controller,service,repository}.js`, `contract.{validator,controller,service,repository}.js`
 - **Business rules:**
   - `totalWeeklyHours` is always server-computed in `workingSchedule.service.js` from day rows, never accepted from the client
   - `Contract`: employeeId, department, jobPosition, startDate, endDate (nullable), wage, workingScheduleId, salaryStructureId, status (Running/Expired)
-  - Enforce no two overlapping **Running** contracts for the same employee (transaction + overlap check in `contract.service.js`)
-- **Routes:** `/api/working-schedules` (+ `/list`, `/options`, `/[id]`), `/api/contracts` (+ `/list`, `/options`, `/[id]`), `/api/employees/[id]/contracts` (scoped, reuses the contract grid contract with a forced `employeeId` filter) — all behind `withAuth()`
+  - Enforce no two overlapping **Running** contracts for the same employee (overlap check in `contract.service.js`, via `findOverlappingRunningContracts` in the repository)
+- **Routes:** `/api/working-schedules` (+ `/list`, `/options`, `/[id]`), `/api/contracts` (+ `/list`, `/[id]`), `/api/employees/[id]/contracts` (scoped, reuses the contract grid contract with a forced `employeeId` filter) — all behind `withAuth()`. No `/api/contracts/options` — nothing in the app picks "a contract" from a generic dropdown, unlike Working Schedules which are referenced by Employee/Contract forms.
 - **Hooks:** `useWorkingSchedulesGrid.js`, `useContractsGrid.js`
 - **Agent:** `rain-skill:database-architect` + `rain-skill:backend-specialist`
-- **Verify:** attempt a 2nd overlapping Running contract for one employee → rejected with a clear error; Contracts grid list correctly highlights/filters by status = Running
+- **Verify — all confirmed against the running server + real DB:**
+  - Created a WorkingSchedule with 2 days (09:00–17:00, 30min break each) → server computed `hours: 7.5` per day, `totalWeeklyHours: 15` (client never sent these)
+  - A day entry with `endTime` before `startTime` → **400** "Invalid day entry... endTime must be after startTime + break"
+  - `GET /api/working-schedules/options` → `[{id, label}]`, Active schedules only
+  - Assigned the schedule to Aarav's Employee record via `PATCH /api/employees/[id]`; created a Running Contract for him referencing it
+  - 2nd overlapping Running contract for the same employee → **409** "already has a Running contract that overlaps this period"; after expiring the first (`status: "Expired"`, `endDate` set), a new non-overlapping Running contract → **201**
+  - EMPLOYEE role: reading their own assigned WorkingSchedule → **200**; `PATCH` on any WorkingSchedule → **403**; their Contracts grid list is silently forced to their own `employeeId` regardless of filters; `POST /api/employees/[id]/contracts` for a *different* employee's id → **403** "You may only view your own contracts"
+  - Found and fixed a real bug during verification: Zod validated `startDate`/`endDate` as plain `"YYYY-MM-DD"` strings, but Prisma's `DateTime` column requires a real `Date`/full ISO datetime — `contract.service.js` now converts both fields once, centrally, before anything reaches the repository
 
 ## Phase 3 — Attendance *(Round 1)*
 
