@@ -14,7 +14,9 @@ import {
   Trash2,
   AlertCircle,
   UserPlus,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function EmployeeFormModal({
@@ -34,6 +36,7 @@ export default function EmployeeFormModal({
   const [activeTab, setActiveTab] = useState('work'); // 'work' | 'private'
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   // Form State
@@ -406,19 +409,34 @@ export default function EmployeeFormModal({
                     </span>
                   )}
                 </div>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Between 8 and 72 characters"
-                  required
-                  className={`${inputClassName} ${
-                    formData.password.length > 72
-                      ? '!border-red-500 !bg-red-50/20 !ring-red-500/20'
-                      : ''
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Between 8 and 72 characters"
+                    required
+                    className={`${inputClassName} pr-10 ${
+                      formData.password.length > 72
+                        ? '!border-red-500 !bg-red-50/20 !ring-red-500/20'
+                        : ''
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-slate-600" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
                 {formData.password.length > 72 ? (
                   <p className="text-xs text-red-600 mt-1.5 font-semibold flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />

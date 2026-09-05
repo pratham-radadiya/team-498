@@ -122,6 +122,7 @@ export async function listTimeOffRequestsGrid(gridRequest, session) {
     ...rest,
     employeeName: employee?.name ?? null,
     typeName: type?.name ?? null,
+    typeUnit: type?.unit ?? 'Days',
   }))
   return { rows: shaped, rowCount }
 }
