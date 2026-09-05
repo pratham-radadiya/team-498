@@ -3,105 +3,88 @@
 import { useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { getInitials, getStatusBadgeClass } from '@/lib/formatters';
-import { ROLE_LABELS } from '@/lib/rbac';
+import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
 import { SkeletonTable } from '@/components/ui/Skeleton';
-import { Mail, Briefcase, Building, ShieldCheck, Eye, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, Calendar, Eye, ChevronRight, ChevronLeft } from 'lucide-react';
 
-// Register AG Grid Community Modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-export default function EmployeeList({
-  employees = [],
+export default function ContractList({
+  contracts = [],
   loading = false,
-  onEmployeeClick,
+  onContractClick,
   totalCount = 0,
   page = 1,
   pageSize = 10,
   onPageChange,
   onPageSizeChange,
 }) {
-  // Custom Cell Renderers for AG Grid with clean minimal styling (no heavy backgrounds on column data)
   const columnDefs = useMemo(
     () => [
       {
         headerName: 'Employee',
-        field: 'name',
-        flex: 2,
-        minWidth: 200,
-        cellRenderer: (params) => {
-          const emp = params.data;
-          if (!emp) return null;
-          return (
-            <div className="flex items-center gap-3 py-1">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {getInitials(emp.name)}
-              </div>
-              <div className="truncate">
-                <span className="font-semibold text-slate-900 hover:text-indigo-600 transition-colors block text-xs truncate">
-                  {emp.name}
-                </span>
-                <span className="text-[10px] text-slate-500 block leading-none">
-                  {emp.company || 'PeoplePay360'}
-                </span>
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        headerName: 'Work Email',
-        field: 'email',
+        field: 'employeeName',
         flex: 2,
         minWidth: 180,
-        cellRenderer: (params) => {
-          if (!params.value) return '—';
-          return (
-            <div className="flex items-center gap-1.5 text-xs text-slate-700 font-mono py-1">
-              <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="truncate">{params.value}</span>
+        cellRenderer: (params) => (
+          <div className="flex items-center gap-3 py-1">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              <FileText className="w-4 h-4" />
             </div>
-          );
-        },
+            <div className="truncate">
+              <span className="font-bold text-slate-900 hover:text-indigo-600 transition-colors block text-xs truncate">
+                {params.value || params.data?.employeeId || 'Employee'}
+              </span>
+              <span className="text-[10px] text-slate-500 block leading-none">
+                {params.data?.department || 'General'}
+              </span>
+            </div>
+          </div>
+        ),
       },
       {
         headerName: 'Job Position',
         field: 'jobPosition',
         flex: 1.5,
-        minWidth: 150,
+        minWidth: 140,
+        cellRenderer: (params) => (
+          <span className="text-xs font-semibold text-slate-700">{params.value || '—'}</span>
+        ),
+      },
+      {
+        headerName: 'Start Date',
+        field: 'startDate',
+        flex: 1.5,
+        minWidth: 130,
         cellRenderer: (params) => (
           <div className="flex items-center gap-1.5 text-xs text-slate-700 py-1">
-            <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate">{params.value || '—'}</span>
+            <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span>{formatDate(params.value)}</span>
           </div>
         ),
       },
       {
-        headerName: 'Department',
-        field: 'department',
+        headerName: 'End Date',
+        field: 'endDate',
         flex: 1.5,
-        minWidth: 140,
+        minWidth: 130,
         cellRenderer: (params) => (
-          <div className="flex items-center gap-1.5 text-xs text-slate-700 py-1">
-            <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate">{params.value || 'Unassigned'}</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 py-1">
+            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span>{params.value ? formatDate(params.value) : 'Ongoing'}</span>
           </div>
         ),
       },
       {
-        headerName: 'Role',
-        field: 'role',
+        headerName: 'Wage (INR)',
+        field: 'wage',
         flex: 1.5,
         minWidth: 140,
-        cellRenderer: (params) => {
-          if (!params.value) return '—';
-          return (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700 py-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              <span>{ROLE_LABELS[params.value] || params.value}</span>
-            </div>
-          );
-        },
+        cellRenderer: (params) => (
+          <div className="flex items-center gap-1 text-xs font-bold text-slate-900 font-mono py-1">
+            <span>{formatCurrency(params.value)}</span>
+          </div>
+        ),
       },
       {
         headerName: 'Status',
@@ -111,7 +94,7 @@ export default function EmployeeList({
         cellRenderer: (params) => (
           <div className="py-1">
             <span className={`badge ${getStatusBadgeClass(params.value)}`}>
-              {params.value || 'Active'}
+              {params.value || 'Running'}
             </span>
           </div>
         ),
@@ -126,9 +109,9 @@ export default function EmployeeList({
         cellRenderer: (params) => (
           <div className="flex justify-center items-center h-full py-1">
             <button
-              onClick={() => onEmployeeClick && onEmployeeClick(params.value)}
+              onClick={() => onContractClick && onContractClick(params.value)}
               className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
-              title="View Employee Details"
+              title="View Contract"
             >
               <Eye className="w-4 h-4" />
             </button>
@@ -136,7 +119,7 @@ export default function EmployeeList({
         ),
       },
     ],
-    [onEmployeeClick]
+    [onContractClick]
   );
 
   const defaultColDef = useMemo(
@@ -148,25 +131,24 @@ export default function EmployeeList({
     []
   );
 
-  if (loading && employees.length === 0) {
+  if (loading && contracts.length === 0) {
     return <SkeletonTable />;
   }
 
-  const totalPages = Math.ceil((totalCount || employees.length) / pageSize) || 1;
+  const totalPages = Math.ceil((totalCount || contracts.length) / pageSize) || 1;
 
   return (
     <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in flex flex-col">
-      {/* AG Grid Table Container */}
       <div className="w-full text-xs" style={{ height: '420px' }}>
         <AgGridReact
-          rowData={employees}
+          rowData={contracts}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          onRowClicked={(e) => onEmployeeClick && onEmployeeClick(e.data?.id)}
+          onRowClicked={(e) => onContractClick && onContractClick(e.data?.id)}
           rowHeight={48}
           headerHeight={40}
           rowSelection="single"
-          overlayNoRowsTemplate="<span class='text-xs text-slate-500 font-medium'>No employee records found</span>"
+          overlayNoRowsTemplate="<span class='text-xs text-slate-500 font-medium'>No contract records found</span>"
         />
       </div>
 
@@ -177,7 +159,7 @@ export default function EmployeeList({
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange && onPageSizeChange(Number(e.target.value))}
-            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 font-semibold"
           >
             <option value={5}>5</option>
             <option value={10}>10</option>
@@ -189,7 +171,7 @@ export default function EmployeeList({
         <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
           <span>
             Page <strong className="font-semibold text-slate-900">{page}</strong> of{' '}
-            <strong className="font-semibold text-slate-900">{totalPages}</strong> ({totalCount || employees.length} items)
+            <strong className="font-semibold text-slate-900">{totalPages}</strong> ({totalCount || contracts.length} items)
           </span>
 
           <div className="flex items-center gap-1">
@@ -197,7 +179,6 @@ export default function EmployeeList({
               onClick={() => onPageChange && onPageChange(page - 1)}
               disabled={page <= 1}
               className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              aria-label="Previous Page"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -205,7 +186,6 @@ export default function EmployeeList({
               onClick={() => onPageChange && onPageChange(page + 1)}
               disabled={page >= totalPages}
               className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              aria-label="Next Page"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

@@ -246,37 +246,49 @@ export default function EmployeeFormModal({
         {/* Smart Buttons Header (Edit Mode only) */}
         {!isCreate && (
           <div className="px-8 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center gap-3 overflow-x-auto custom-scrollbar">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 shadow-xs">
+            <a
+              href="/contracts"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 text-xs font-bold text-slate-700 shadow-xs transition-all"
+            >
               <FileText className="w-4 h-4 text-indigo-600" />
               <span>Contracts</span>
               <span className="ml-1 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[11px]">
                 {smartCounts.contracts}
               </span>
-            </div>
+            </a>
 
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 shadow-xs">
+            <a
+              href="/attendance"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 text-xs font-bold text-slate-700 shadow-xs transition-all"
+            >
               <Clock className="w-4 h-4 text-emerald-600" />
               <span>Attendance</span>
               <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px]">
                 {smartCounts.attendance}
               </span>
-            </div>
+            </a>
 
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 shadow-xs">
+            <a
+              href="/time-off/requests"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-amber-400 hover:bg-amber-50/50 text-xs font-bold text-slate-700 shadow-xs transition-all"
+            >
               <Calendar className="w-4 h-4 text-amber-600" />
               <span>Time Off</span>
               <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-600 text-white text-[11px]">
                 {smartCounts.timeOff}
               </span>
-            </div>
+            </a>
 
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 shadow-xs">
+            <a
+              href="/time-off/allocations"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-blue-400 hover:bg-blue-50/50 text-xs font-bold text-slate-700 shadow-xs transition-all"
+            >
               <Layers className="w-4 h-4 text-blue-600" />
               <span>Allocations</span>
               <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px]">
                 {smartCounts.allocations}
               </span>
-            </div>
+            </a>
           </div>
         )}
 

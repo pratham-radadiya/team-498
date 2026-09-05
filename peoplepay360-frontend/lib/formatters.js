@@ -68,6 +68,27 @@ export function getStatusBadgeClass(status) {
   }
 }
 
+export const DAYS_OF_WEEK = [
+  { key: 'MON', label: 'Monday' },
+  { key: 'TUE', label: 'Tuesday' },
+  { key: 'WED', label: 'Wednesday' },
+  { key: 'THU', label: 'Thursday' },
+  { key: 'FRI', label: 'Friday' },
+  { key: 'SAT', label: 'Saturday' },
+  { key: 'SUN', label: 'Sunday' },
+];
+
+export function formatDaysOrHours(value, unit = 'Days') {
+  if (value === null || value === undefined || isNaN(value)) {
+    return unit === 'Hours' ? '0.0h' : '0 days';
+  }
+  const num = Number(value);
+  if (unit === 'Hours') {
+    return `${num.toFixed(1)}h`;
+  }
+  return `${num} ${num === 1 ? 'day' : 'days'}`;
+}
+
 export function getInitials(name) {
   if (!name) return 'U';
   const parts = name.trim().split(' ');
