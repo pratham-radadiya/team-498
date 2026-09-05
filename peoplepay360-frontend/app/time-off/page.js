@@ -28,7 +28,7 @@ export default function TimeOffDashboardPage() {
         const [reqRes, allocRes, typesRes] = await Promise.all([
           apiClient.post('/api/timeoff/requests/list', { startRow: 0, endRow: 10 }),
           apiClient.post('/api/timeoff/allocations/list', { startRow: 0, endRow: 50 }),
-          apiClient.get('/api/timeoff/types'),
+          apiClient.get('/api/timeoff/types/options'),
         ]);
 
         const reqRows = reqRes.data?.rows || [];

@@ -38,14 +38,14 @@ export default function TimeOffRequestsPage() {
       try {
         const [empRes, typeRes] = await Promise.all([
           apiClient.post('/api/employees/list', { startRow: 0, endRow: 200 }),
-          apiClient.get('/api/timeoff/types'),
+          apiClient.get('/api/timeoff/types/options'),
         ]);
 
         const empRows = empRes.data?.rows || [];
         setEmployeeOptions(
           empRows.map((e) => ({
             id: e.id,
-            label: `${e.firstName} ${e.lastName}`,
+            label: `${e.name || (e.firstName ? `${e.firstName} ${e.lastName}` : e.id)}`,
           }))
         );
 
@@ -53,8 +53,8 @@ export default function TimeOffRequestsPage() {
         setTypeOptions(
           typeList.map((t) => ({
             id: t.id,
-            name: t.name,
-            unit: t.unit,
+            name: t.label || t.name || t.id,
+            unit: t.unit || 'Days',
           }))
         );
       } catch (err) {

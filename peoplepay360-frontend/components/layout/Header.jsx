@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAttendanceWidget } from '@/hooks/useAttendanceWidget';
+import { useSidebar } from '@/context/SidebarContext';
 import { ROLE_LABELS } from '@/lib/rbac';
 import { getInitials } from '@/lib/formatters';
 import {
@@ -22,10 +23,13 @@ import {
   X
 } from 'lucide-react';
 
-export default function Header({ onMobileToggle }) {
+export default function Header({ onMobileToggle: propsOnMobileToggle }) {
   const router = useRouter();
   const { user, role, signOut } = useAuthSession();
   const { isCheckedIn, elapsedFormatted, loading: attendanceLoading, toggleAttendance } = useAttendanceWidget();
+  const sidebarCtx = useSidebar();
+
+  const onMobileToggle = propsOnMobileToggle || sidebarCtx?.toggleMobileSidebar;
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

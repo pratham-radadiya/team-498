@@ -9,6 +9,7 @@ import {
   Clock,
   Calendar,
   Layers,
+  CreditCard,
   Save,
   Trash2,
   AlertCircle,
@@ -287,6 +288,17 @@ export default function EmployeeFormModal({
               <span>Allocations</span>
               <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px]">
                 {smartCounts.allocations}
+              </span>
+            </a>
+
+            <a
+              href="/payroll/payslips"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-purple-400 hover:bg-purple-50/50 text-xs font-bold text-slate-700 shadow-xs transition-all"
+            >
+              <CreditCard className="w-4 h-4 text-purple-600" />
+              <span>Payslips</span>
+              <span className="ml-1 px-2 py-0.5 rounded-full bg-purple-600 text-white text-[11px]">
+                {smartCounts.payslips || 0}
               </span>
             </a>
           </div>

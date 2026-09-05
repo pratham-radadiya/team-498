@@ -13,6 +13,7 @@ export default function ContractFormModal({
   deleteContract,
   employeeOptions = [],
   scheduleOptions = [],
+  structureOptions = [],
   onSuccess,
 }) {
   const isCreate = !contractId;
@@ -28,6 +29,7 @@ export default function ContractFormModal({
     endDate: '',
     wage: '',
     workingScheduleId: '',
+    structureId: '',
     status: 'Running',
     notes: '',
   });
@@ -46,6 +48,7 @@ export default function ContractFormModal({
             endDate: data.endDate ? data.endDate.split('T')[0] : '',
             wage: data.wage !== undefined ? String(data.wage) : '',
             workingScheduleId: data.workingScheduleId || '',
+            structureId: data.structureId || '',
             status: data.status || 'Running',
             notes: data.notes || '',
           });
@@ -62,12 +65,13 @@ export default function ContractFormModal({
         endDate: '',
         wage: '',
         workingScheduleId: scheduleOptions.length > 0 ? scheduleOptions[0].id : '',
+        structureId: structureOptions.length > 0 ? structureOptions[0].id : '',
         status: 'Running',
         notes: '',
       });
       setError('');
     }
-  }, [isOpen, contractId, isCreate, fetchContractById, employeeOptions, scheduleOptions]);
+  }, [isOpen, contractId, isCreate, fetchContractById, employeeOptions, scheduleOptions, structureOptions]);
 
   if (!isOpen) return null;
 
@@ -103,6 +107,7 @@ export default function ContractFormModal({
         endDate: formData.endDate || null,
         wage: Number(formData.wage),
         workingScheduleId: formData.workingScheduleId || null,
+        structureId: formData.structureId || null,
         status: formData.status,
         notes: formData.notes?.trim() || null,
       };
@@ -287,6 +292,26 @@ export default function ContractFormModal({
                   >
                     <option value="">No Schedule Selected</option>
                     {scheduleOptions.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-5 h-5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-800 mb-2">Salary Structure</label>
+                <div className="relative">
+                  <select
+                    name="structureId"
+                    value={formData.structureId}
+                    onChange={handleChange}
+                    className={selectClassName}
+                  >
+                    <option value="">No Structure Selected</option>
+                    {structureOptions.map((opt) => (
                       <option key={opt.id} value={opt.id}>
                         {opt.label}
                       </option>

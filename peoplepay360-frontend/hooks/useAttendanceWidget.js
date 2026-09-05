@@ -17,11 +17,12 @@ export function useAttendanceWidget() {
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
     try {
-      const response = await apiClient.get('/api/attendance/active').catch(() => null);
-      if (response && response.data && response.data.activeRecord) {
+      const response = await apiClient.get('/api/attendance/current').catch(() => null);
+      if (response && response.data && response.data.isOpen && response.data.attendance) {
+        const sessionData = response.data.attendance;
         setIsCheckedIn(true);
-        setActiveSessionId(response.data.activeRecord.id);
-        const startTime = new Date(response.data.activeRecord.checkIn).getTime();
+        setActiveSessionId(sessionData.id);
+        const startTime = new Date(sessionData.checkIn).getTime();
         setCheckInTime(startTime);
         setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
       }
@@ -61,10 +62,7 @@ export function useAttendanceWidget() {
     setLoading(true);
     try {
       if (isCheckedIn) {
-        await apiClient.post('/api/attendance/check-out', {
-          id: activeSessionId,
-          checkOut: new Date().toISOString(),
-        }).catch(() => {});
+        await apiClient.post('/api/attendance/check-out', {}).catch(() => {});
 
         setIsCheckedIn(false);
         setActiveSessionId(null);
@@ -72,13 +70,13 @@ export function useAttendanceWidget() {
         setElapsedSeconds(0);
       } else {
         const now = Date.now();
-        const response = await apiClient.post('/api/attendance/check-in', {
-          checkIn: new Date(now).toISOString(),
-        }).catch(() => null);
+        const response = await apiClient.post('/api/attendance/check-in', {}).catch(() => null);
 
+        const rec = response?.data;
         setIsCheckedIn(true);
-        setCheckInTime(now);
-        setActiveSessionId(response?.data?.activeRecord?.id || 'active');
+        const startTime = rec?.checkIn ? new Date(rec.checkIn).getTime() : now;
+        setCheckInTime(startTime);
+        setActiveSessionId(rec?.id || 'active');
       }
     } catch (err) {
       console.error('Failed to toggle attendance', err);

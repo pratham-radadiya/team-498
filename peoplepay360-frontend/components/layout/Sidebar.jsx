@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
+import { useSidebar } from '@/context/SidebarContext';
 import { canAccessModule } from '@/lib/rbac';
 import {
   Users,
@@ -13,11 +14,16 @@ import {
   CreditCard,
   ChevronDown,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 
-export default function Sidebar({ mobileOpen = false, onMobileClose }) {
+export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: propsOnMobileClose }) {
   const pathname = usePathname();
   const { role } = useAuthSession();
+  const sidebarCtx = useSidebar();
+
+  const mobileOpen = propsMobileOpen !== undefined ? propsMobileOpen : sidebarCtx?.mobileOpen;
+  const onMobileClose = propsOnMobileClose || sidebarCtx?.closeMobileSidebar;
 
   // Collapsible dropdown states
   const [openMenus, setOpenMenus] = useState({
@@ -59,10 +65,10 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
         {/* Mobile Close Button */}
         <button
           onClick={onMobileClose}
-          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 lg:hidden transition-all"
+          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 lg:hidden transition-all cursor-pointer"
           aria-label="Close Sidebar"
         >
-          <ChevronDown className="w-5 h-5 rotate-90" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 

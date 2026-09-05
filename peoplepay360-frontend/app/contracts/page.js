@@ -5,6 +5,7 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useContracts } from '@/hooks/useContracts';
 import { useSchedules } from '@/hooks/useSchedules';
 import { useEmployees } from '@/hooks/useEmployees';
+import { useSalaryStructures } from '@/hooks/useSalaryStructures';
 import { canPerformAction } from '@/lib/rbac';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -41,7 +42,9 @@ export default function ContractsPage() {
   } = useSchedules();
 
   const { options: employeeOptions, fetchOptions: fetchEmployeeOptions } = useEmployees();
+  const { fetchStructureOptions } = useSalaryStructures();
 
+  const [structureOptions, setStructureOptions] = useState([]);
   const [activeTab, setActiveTab] = useState('contracts'); // 'contracts' | 'schedules'
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -78,8 +81,9 @@ export default function ContractsPage() {
       hasLoadedOptions.current = true;
       fetchEmployeeOptions();
       fetchScheduleOptions();
+      fetchStructureOptions().then((opts) => setStructureOptions(opts || [])).catch(() => {});
     }
-  }, [fetchEmployeeOptions, fetchScheduleOptions]);
+  }, [fetchEmployeeOptions, fetchScheduleOptions, fetchStructureOptions]);
 
   const handleRefetch = () => {
     if (activeTab === 'contracts') {
@@ -262,6 +266,7 @@ export default function ContractsPage() {
         deleteContract={deleteContract}
         employeeOptions={employeeOptions}
         scheduleOptions={scheduleOptions}
+        structureOptions={structureOptions}
         onSuccess={handleRefetch}
       />
 
