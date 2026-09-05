@@ -7,7 +7,7 @@ const roleEnum = z.enum(Object.values(ROLES))
 export const createEmployeeSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(8, 'Password must be at least 8 characters long').max(72, 'Password cannot exceed 72 characters'),
   role: roleEnum,
   department: z.string().nullable().optional(),
   jobPosition: z.string().nullable().optional(),

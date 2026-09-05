@@ -83,6 +83,7 @@ export default function PayslipsPage() {
           <PayslipList
             refreshTrigger={gridRefreshTrigger}
             onSelectPayslip={handleSelectPayslip}
+            onDownloadPdf={downloadPdf}
             employeeIdFilter={employeeFilter}
           />
         </div>
@@ -91,7 +92,10 @@ export default function PayslipsPage() {
       {/* Payslip Detail & Print Modal */}
       <PayslipDetailModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedPayslipId(null);
+        }}
         payslipId={selectedPayslipId}
         fetchPayslipById={fetchPayslipById}
         getPdfUrl={getPdfUrl}

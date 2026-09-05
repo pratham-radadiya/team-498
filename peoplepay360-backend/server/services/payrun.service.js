@@ -43,7 +43,11 @@ export async function getEligibleEmployees(data) {
 export async function getPayrun(id) {
   const payrun = await payrunRepo.findPayrunById(id)
   if (!payrun) throw new NotFoundError('Payrun not found')
-  return payrun
+  const shapedPayslips = (payrun.payslips || []).map(({ employee, ...ps }) => ({
+    ...ps,
+    employeeName: employee?.name ?? null,
+  }))
+  return { ...payrun, payslips: shapedPayslips }
 }
 
 function assertNotPaid(payrun) {
@@ -107,7 +111,7 @@ export async function computePayrun(id) {
     await payslipRepo.replaceWarnings(payslip.id, warnings)
   }
 
-  return payrunRepo.findPayrunById(id)
+  return getPayrun(id)
 }
 
 export async function validatePayrun(id) {

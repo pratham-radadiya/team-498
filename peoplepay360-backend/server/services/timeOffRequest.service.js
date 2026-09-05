@@ -118,5 +118,10 @@ export async function listTimeOffRequestsGrid(gridRequest, session) {
     orderBy,
     where: effectiveWhere,
   })
-  return { rows, rowCount }
+  const shaped = rows.map(({ employee, type, ...rest }) => ({
+    ...rest,
+    employeeName: employee?.name ?? null,
+    typeName: type?.name ?? null,
+  }))
+  return { rows: shaped, rowCount }
 }

@@ -170,7 +170,10 @@ export default function PayrunsPage() {
       {/* Payslip Detail Modal */}
       <PayslipDetailModal
         isOpen={isPayslipDetailOpen}
-        onClose={() => setIsPayslipDetailOpen(false)}
+        onClose={() => {
+          setIsPayslipDetailOpen(false);
+          setSelectedPayslipId(null);
+        }}
         payslipId={selectedPayslipId}
         fetchPayslipById={fetchPayslipById}
         getPdfUrl={getPdfUrl}

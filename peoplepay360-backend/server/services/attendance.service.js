@@ -128,5 +128,6 @@ export async function listAttendanceGrid(gridRequest, session) {
     orderBy,
     where: effectiveWhere,
   })
-  return { rows, rowCount }
+  const shaped = rows.map(({ employee, ...rest }) => ({ ...rest, employeeName: employee?.name ?? null }))
+  return { rows: shaped, rowCount }
 }

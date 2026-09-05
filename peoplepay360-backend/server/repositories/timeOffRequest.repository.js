@@ -18,7 +18,7 @@ export function deleteTimeOffRequest(id) {
 
 export function listTimeOffRequestsForGrid({ skip, take, orderBy, where }) {
   return Promise.all([
-    prisma.timeOffRequest.findMany({ skip, take, orderBy, where }),
+    prisma.timeOffRequest.findMany({ skip, take, orderBy, where, include: { employee: { select: { name: true } }, type: { select: { name: true } } } }),
     prisma.timeOffRequest.count({ where }),
   ])
 }

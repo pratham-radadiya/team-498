@@ -25,7 +25,7 @@ export function deleteAttendance(id) {
 
 export function listAttendanceForGrid({ skip, take, orderBy, where }) {
   return Promise.all([
-    prisma.attendance.findMany({ skip, take, orderBy, where }),
+    prisma.attendance.findMany({ skip, take, orderBy, where, include: { employee: { select: { name: true } } } }),
     prisma.attendance.count({ where }),
   ])
 }

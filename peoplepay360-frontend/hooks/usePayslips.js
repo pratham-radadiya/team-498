@@ -43,20 +43,21 @@ export function usePayslips() {
   }, []);
 
   const downloadPdf = useCallback(async (id, employeeName) => {
-    if (!id || id === 'undefined') {
+    const cleanId = typeof id === 'string' ? id.trim() : id ? String(id).trim() : '';
+    if (!cleanId || cleanId === 'undefined' || cleanId === 'null') {
       const msg = 'Cannot download PDF: Invalid or missing payslip ID';
       console.error(msg);
       throw new Error(msg);
     }
     try {
-      const response = await apiClient.get(`/api/payslips/${id}/pdf`, {
+      const response = await apiClient.get(`/api/payslips/${encodeURIComponent(cleanId)}/pdf`, {
         responseType: 'blob',
       });
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const cleanName = employeeName ? String(employeeName).trim().replace(/\s+/g, '_') : id;
+      const cleanName = employeeName ? String(employeeName).trim().replace(/\s+/g, '_') : cleanId;
       link.setAttribute('download', `Payslip_${cleanName}.pdf`);
       document.body.appendChild(link);
       link.click();
@@ -64,7 +65,18 @@ export function usePayslips() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Blob download error:', err);
-      const msg = err.response?.data?.error || err.message || 'Failed to download PDF payslip';
+      let msg = err.message || 'Failed to download PDF payslip';
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          if (json.error || json.message) {
+            msg = json.error || json.message;
+          }
+        } catch (_) {}
+      } else if (err.response?.data?.error || err.response?.data?.message) {
+        msg = err.response.data.error || err.response.data.message;
+      }
       throw new Error(msg);
     }
   }, []);

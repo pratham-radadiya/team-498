@@ -19,7 +19,14 @@ export async function getPayslip(id, session) {
   if (session.role === ROLES.EMPLOYEE && payslip.employeeId !== session.employeeId) {
     throw new ForbiddenError('You may only view your own payslips')
   }
-  return payslip
+  const { employee, payrun, ...rest } = payslip
+  return {
+    ...rest,
+    employee,
+    payrun,
+    employeeName: employee?.name ?? null,
+    payrunStatus: payrun?.status ?? null,
+  }
 }
 
 export async function getPayslipPdf(id, session) {
@@ -49,5 +56,6 @@ export async function listPayslipsGrid(gridRequest, session) {
     session.role === ROLES.EMPLOYEE ? { ...where, employeeId: session.employeeId } : where
 
   const [rows, rowCount] = await payslipRepo.listPayslipsForGrid({ skip, take, orderBy, where: effectiveWhere })
-  return { rows, rowCount }
+  const shaped = rows.map(({ employee, ...rest }) => ({ ...rest, employeeName: employee?.name ?? null }))
+  return { rows: shaped, rowCount }
 }

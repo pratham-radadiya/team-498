@@ -31,10 +31,15 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
 
   const onMobileToggle = propsOnMobileToggle || sidebarCtx?.toggleMobileSidebar;
 
+  const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const searchContainerRef = useRef(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close search popover on outside click
   useEffect(() => {
@@ -166,7 +171,7 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
       {/* Right Action Icons & User Dropdown */}
       <div className="flex items-center gap-2.5 sm:gap-4">
         {/* Quick Attendance Check-In / Check-Out Dynamic Button */}
-        {isCheckedIn ? (
+        {mounted && isCheckedIn ? (
           /* ACTIVE SESSION: CHECK OUT BUTTON WITH LIVE TIMER */
           <button
             onClick={toggleAttendance}
@@ -190,7 +195,7 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
           /* NO ACTIVE SESSION: CHECK IN BUTTON */
           <button
             onClick={toggleAttendance}
-            disabled={attendanceLoading}
+            disabled={!mounted || attendanceLoading}
             className="flex items-center gap-1.5 sm:gap-2 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50"
             title="Start Work Session — Click to Check In"
           >
@@ -206,10 +211,12 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
         )}
 
         {/* Role Badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>{ROLE_LABELS[role] || role || 'User'}</span>
-        </div>
+        {mounted && role && (
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{ROLE_LABELS[role] || role}</span>
+          </div>
+        )}
 
         {/* User Menu Dropdown */}
         <div className="relative">
@@ -218,13 +225,13 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
             className="flex items-center gap-2 sm:gap-3 p-1 rounded-xl hover:bg-slate-100 transition-all text-left"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-              {getInitials(user?.email || 'User')}
+              {mounted ? getInitials(user?.email || 'User') : 'U'}
             </div>
             <div className="hidden lg:block">
               <p className="text-xs font-semibold text-slate-800 leading-tight">
-                {user?.email ? user.email.split('@')[0] : 'User'}
+                {mounted && user?.email ? user.email.split('@')[0] : 'User'}
               </p>
-              <p className="text-[10px] text-slate-500 leading-tight">{user?.email}</p>
+              <p className="text-[10px] text-slate-500 leading-tight">{mounted && user?.email ? user.email : ''}</p>
             </div>
           </button>
 

@@ -23,7 +23,16 @@ function money(n) {
   return (n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function PayslipDocument({ payslip, employee, payrun }) {
+export function PayslipDocument({ payslip = {}, employee = {}, payrun = {} }) {
+  const empName = employee?.name || payslip?.employeeName || 'Employee'
+  const empEmail = employee?.email || '—'
+  const payrunName = payrun?.name || 'Payrun'
+  const pStart = payrun?.periodStart || payslip?.periodStart
+  const pEnd = payrun?.periodEnd || payslip?.periodEnd
+  const periodStr = pStart && pEnd
+    ? `${new Date(pStart).toLocaleDateString()} to ${new Date(pEnd).toLocaleDateString()}`
+    : 'Current Period'
+
   return e(
     Document,
     null,
@@ -31,14 +40,14 @@ export function PayslipDocument({ payslip, employee, payrun }) {
       Page,
       { size: 'A4', style: styles.page },
       e(Text, { style: styles.title }, 'Payslip'),
-      e(Text, { style: styles.subtitle }, `${payrun.name} — ${new Date(payrun.periodStart).toLocaleDateString()} to ${new Date(payrun.periodEnd).toLocaleDateString()}`),
+      e(Text, { style: styles.subtitle }, `${payrunName} — ${periodStr}`),
       e(
         View,
         { style: styles.section },
-        e(View, { style: styles.row }, e(Text, { style: styles.label }, 'Employee'), e(Text, null, employee.name)),
-        e(View, { style: styles.row }, e(Text, { style: styles.label }, 'Employee Email'), e(Text, null, employee.email)),
+        e(View, { style: styles.row }, e(Text, { style: styles.label }, 'Employee'), e(Text, null, empName)),
+        e(View, { style: styles.row }, e(Text, { style: styles.label }, 'Employee Email'), e(Text, null, empEmail)),
         e(View, { style: styles.row }, e(Text, { style: styles.label }, 'Worked Days'), e(Text, null, String(payslip.workedDays ?? '-'))),
-        e(View, { style: styles.row }, e(Text, { style: styles.label }, 'Status'), e(Text, null, payslip.status))
+        e(View, { style: styles.row }, e(Text, { style: styles.label }, 'Status'), e(Text, null, payslip.status || 'Draft'))
       ),
       e(
         View,

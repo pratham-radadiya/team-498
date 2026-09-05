@@ -33,10 +33,12 @@ export default function PayslipDetailModal({
   const [error, setError] = useState('');
   const [payslipData, setPayslipData] = useState(null);
 
+  const [downloading, setDownloading] = useState(false);
+  const targetId = payslipId || payslipData?.id || payslipData?._id;
   const canDelete = canPerformAction(currentUserRole, 'payslips', 'delete');
 
   useEffect(() => {
-    if (isOpen && payslipId) {
+    if (isOpen && payslipId && payslipId !== 'undefined') {
       setLoading(true);
       setError('');
       fetchPayslipById(payslipId)
@@ -45,6 +47,8 @@ export default function PayslipDetailModal({
         })
         .catch((err) => setError(err.message || 'Failed to load payslip details'))
         .finally(() => setLoading(false));
+    } else if (isOpen && (!payslipId || payslipId === 'undefined')) {
+      setPayslipData(null);
     }
   }, [isOpen, payslipId, fetchPayslipById]);
 
@@ -54,7 +58,7 @@ export default function PayslipDetailModal({
     if (confirm('Are you sure you want to delete this payslip record?')) {
       try {
         setSubmitting(true);
-        await deletePayslip(payslipId);
+        await deletePayslip(targetId);
         onSuccess && onSuccess();
         onClose();
       } catch (err) {
@@ -68,20 +72,21 @@ export default function PayslipDetailModal({
   const isParentPaid = payslipData?.payrunStatus === 'Paid' || payslipData?.status === 'Paid';
 
   const handleDownloadPdf = async () => {
-    const targetId = payslipId || payslipData?.id || payslipData?._id;
-    if (!targetId || targetId === 'undefined') {
+    const validId = targetId && targetId !== 'undefined' ? String(targetId).trim() : null;
+    if (!validId) {
       setError('Cannot download PDF: Payslip ID is missing or invalid.');
       return;
     }
     try {
+      setDownloading(true);
       setError('');
       if (downloadPdf) {
-        await downloadPdf(targetId, payslipData?.employeeName);
+        await downloadPdf(validId, payslipData?.employeeName);
       } else {
         const link = document.createElement('a');
-        const url = getPdfUrl ? getPdfUrl(targetId) : `/api/payslips/${targetId}/pdf`;
+        const url = getPdfUrl ? getPdfUrl(validId) : `/api/payslips/${encodeURIComponent(validId)}/pdf`;
         link.href = url;
-        const cleanName = payslipData?.employeeName ? String(payslipData.employeeName).trim().replace(/\s+/g, '_') : targetId;
+        const cleanName = payslipData?.employeeName ? String(payslipData.employeeName).trim().replace(/\s+/g, '_') : validId;
         link.setAttribute('download', `Payslip_${cleanName}.pdf`);
         document.body.appendChild(link);
         link.click();
@@ -89,6 +94,8 @@ export default function PayslipDetailModal({
       }
     } catch (err) {
       setError(err.message || 'Failed to download payslip PDF');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -104,7 +111,7 @@ export default function PayslipDetailModal({
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-bold text-slate-900">
-                  Payslip — {payslipData?.employeeName || payslipData?.employeeId}
+                  Payslip — {payslipData?.employeeName || payslipData?.employeeId || 'Details'}
                 </h2>
                 <span className={`badge ${getStatusBadgeClass(payslipData?.status)}`}>
                   {payslipData?.status || 'Draft'}
@@ -124,10 +131,15 @@ export default function PayslipDetailModal({
             <button
               type="button"
               onClick={handleDownloadPdf}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+              disabled={loading || downloading || !targetId || targetId === 'undefined'}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Printer className="w-4 h-4" />
-              <span>Print PDF</span>
+              {downloading ? (
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Printer className="w-4 h-4" />
+              )}
+              <span>{downloading ? 'Downloading...' : 'Print PDF'}</span>
             </button>
 
             <button

@@ -32,7 +32,7 @@ export function findOverlappingRunningContracts({ employeeId, startDate, endDate
 
 export function listContractsForGrid({ skip, take, orderBy, where }) {
   return Promise.all([
-    prisma.contract.findMany({ skip, take, orderBy, where }),
+    prisma.contract.findMany({ skip, take, orderBy, where, include: { employee: { select: { name: true } } } }),
     prisma.contract.count({ where }),
   ])
 }

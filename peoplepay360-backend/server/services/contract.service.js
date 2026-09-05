@@ -98,5 +98,6 @@ export async function listContractsGrid(gridRequest, session, { forcedEmployeeId
     orderBy,
     where: effectiveWhere,
   })
-  return { rows, rowCount }
+  const shaped = rows.map(({ employee, ...rest }) => ({ ...rest, employeeName: employee?.name ?? null }))
+  return { rows: shaped, rowCount }
 }

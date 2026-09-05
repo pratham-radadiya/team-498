@@ -5,13 +5,14 @@ import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { usePayslipsGrid } from '@/hooks/usePayslipsGrid';
 import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
-import { User, Eye, Calendar, FileText } from 'lucide-react';
+import { User, Eye, Calendar, FileText, Printer, Download } from 'lucide-react';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export default function PayslipList({
   refreshTrigger = 0,
   onSelectPayslip,
+  onDownloadPdf,
   employeeIdFilter = null,
   payrunIdFilter = null,
 }) {
@@ -121,33 +122,52 @@ export default function PayslipList({
       {
         headerName: 'Action',
         field: 'id',
-        width: 95,
+        width: 140,
         pinned: 'right',
         sortable: false,
         filter: false,
         cellRenderer: (params) => {
-          const targetId = params.data?.id || params.data?._id || params.value || params.data?.payslipId;
+          if (!params.data) return null;
+          const targetId = params.data.id || params.data._id || params.value;
+          if (!targetId || targetId === 'undefined') return null;
+
           return (
-            <div className="flex justify-center items-center h-full py-1">
+            <div className="flex items-center gap-1.5 h-full py-1">
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (onSelectPayslip && targetId && targetId !== 'undefined') {
+                  if (onSelectPayslip) {
                     onSelectPayslip(targetId);
                   }
                 }}
-                className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
+                className="group flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
                 title="View Payslip Details"
               >
                 <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
                 <span className="text-[11px]">View</span>
               </button>
+
+              {onDownloadPdf && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDownloadPdf(targetId, params.data.employeeName);
+                  }}
+                  className="group flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
+                  title="Download PDF Payslip"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-600 group-hover:text-white transition-colors" />
+                  <span className="text-[11px]">PDF</span>
+                </button>
+              )}
             </div>
           );
         },
       },
     ],
-    [onSelectPayslip]
+    [onSelectPayslip, onDownloadPdf]
   );
 
   const defaultColDef = useMemo(

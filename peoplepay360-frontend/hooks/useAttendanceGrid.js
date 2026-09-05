@@ -10,7 +10,7 @@ export function useAttendanceGrid(employeeIdFilter = null) {
         try {
           const filterModel = { ...(params.filterModel || {}) };
           if (employeeIdFilter) {
-            filterModel.employeeId = { type: 'equals', filter: employeeIdFilter };
+            filterModel.employeeId = { filterType: 'text', type: 'equals', filter: employeeIdFilter };
           }
 
           const payload = {

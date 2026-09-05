@@ -6,8 +6,8 @@ const sortModelEntry = z.object({
 })
 
 const filterModelEntry = z.object({
-  filterType: z.string(),
-  type: z.string(),
+  filterType: z.string().optional().default('text'),
+  type: z.string().optional().default('equals'),
   filter: z.unknown(),
 })
 

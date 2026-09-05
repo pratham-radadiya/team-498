@@ -138,8 +138,18 @@ export default function EmployeeFormModal({
           setSubmitting(false);
           return;
         }
-        if (!formData.password || formData.password.length < 8) {
-          setError('Password is required and must be at least 8 characters long.');
+        if (!formData.password) {
+          setError('Password is required.');
+          setSubmitting(false);
+          return;
+        }
+        if (formData.password.length < 8) {
+          setError(`Password is too short. It must be at least 8 characters long (currently ${formData.password.length} characters).`);
+          setSubmitting(false);
+          return;
+        }
+        if (formData.password.length > 72) {
+          setError(`Password cannot exceed 72 characters (currently ${formData.password.length} characters).`);
           setSubmitting(false);
           return;
         }
@@ -378,19 +388,52 @@ export default function EmployeeFormModal({
 
               {/* 3. Password */}
               <div>
-                <label className={labelClassName}>
-                  Account Password <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-bold text-slate-800">
+                    Account Password <span className="text-red-500">*</span>
+                  </label>
+                  {formData.password && (
+                    <span
+                      className={`text-xs font-semibold ${
+                        formData.password.length > 72
+                          ? 'text-red-600'
+                          : formData.password.length < 8
+                          ? 'text-amber-600'
+                          : 'text-emerald-600'
+                      }`}
+                    >
+                      {formData.password.length}/72 characters
+                    </span>
+                  )}
+                </div>
                 <input
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Min 8 characters"
+                  placeholder="Between 8 and 72 characters"
                   required
-                  className={inputClassName}
+                  className={`${inputClassName} ${
+                    formData.password.length > 72
+                      ? '!border-red-500 !bg-red-50/20 !ring-red-500/20'
+                      : ''
+                  }`}
                 />
-                <p className="text-xs text-slate-500 mt-1.5 font-medium">Password must be at least 8 characters long.</p>
+                {formData.password.length > 72 ? (
+                  <p className="text-xs text-red-600 mt-1.5 font-semibold flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    Password cannot exceed 72 characters (currently {formData.password.length} characters).
+                  </p>
+                ) : formData.password.length > 0 && formData.password.length < 8 ? (
+                  <p className="text-xs text-amber-600 mt-1.5 font-medium flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    Password must be at least 8 characters long (currently {formData.password.length}/8).
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500 mt-1.5 font-medium">
+                    Password must be between 8 and 72 characters long.
+                  </p>
+                )}
               </div>
 
               {/* 4. Role & 5. Status Grid */}
