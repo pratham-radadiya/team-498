@@ -23,33 +23,24 @@ enum Role {
   ADMIN
 }
 
-enum UserStatus {
-  Active
-  Inactive
-}
-
 enum EmployeeStatus {
   Active
   Inactive
 }
 
-model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
-  role         Role
-  status       UserStatus @default(Active)
-  employeeId   String?    @unique
-  employee     Employee?  @relation(fields: [employeeId], references: [id])
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-}
-
+// Employee IS the login account — there is no separate User model. Every
+// Employee row that should be able to sign in carries its own credentials
+// and role directly (see server/lib/auth.js, which authenticates against
+// this model). This was a deliberate merge decision, replacing an earlier
+// separate-but-linked User/Employee design.
 model Employee {
   id     String         @id @default(cuid())
   name   String
   email  String         @unique
   status EmployeeStatus @default(Active)
+
+  passwordHash String
+  role         Role
 
   department String?
   jobPosition String?
@@ -66,7 +57,6 @@ model Employee {
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
   reports   Employee[] @relation("EmployeeManager")
 
-  user             User?
   contracts        Contract[]
   attendances      Attendance[]
   allocations      Allocation[]

@@ -1,9 +1,15 @@
 import { prisma } from '../lib/prisma'
+import { EMPLOYEE_SAFE_SELECT } from './employee.repository'
 
 export function findPayslipById(id) {
   return prisma.payslip.findUnique({
     where: { id },
-    include: { warnings: true, employee: true, payrun: true, contract: true },
+    include: {
+      warnings: true,
+      employee: { select: EMPLOYEE_SAFE_SELECT },
+      payrun: true,
+      contract: true,
+    },
   })
 }
 

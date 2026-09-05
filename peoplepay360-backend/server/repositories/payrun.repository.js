@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma'
+import { EMPLOYEE_SAFE_SELECT } from './employee.repository'
 
 export function createPayrunWithDraftPayslips({ name, structureId, periodStart, periodEnd, employeeIds }) {
   return prisma.payrun.create({
@@ -57,7 +58,8 @@ export function findEligibleEmployees(periodStart, periodEnd) {
         },
       },
     },
-    include: {
+    select: {
+      ...EMPLOYEE_SAFE_SELECT,
       contracts: {
         where: {
           status: 'Running',

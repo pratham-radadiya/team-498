@@ -87,7 +87,7 @@ export async function approveTimeOffRequest(id, session) {
     requestId: id,
     allocationId: request.allocationId,
     duration: request.duration,
-    approverId: session.userId,
+    approverId: session.employeeId,
   })
 }
 
@@ -97,7 +97,7 @@ export async function refuseTimeOffRequest(id, session) {
   if (request.status !== 'Pending') {
     throw new ConflictError('Only a Pending request can be refused')
   }
-  return timeOffRequestRepo.updateTimeOffRequest(id, { status: 'Refused', approverId: session.userId })
+  return timeOffRequestRepo.updateTimeOffRequest(id, { status: 'Refused', approverId: session.employeeId })
 }
 
 export async function deleteTimeOffRequest(id) {

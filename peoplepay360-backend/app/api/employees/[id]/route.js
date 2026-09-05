@@ -24,7 +24,7 @@ export async function PATCH(request, { params }) {
     const session = await withAuth()
     requireRole(session, NON_EMPLOYEE_ROLES)
     const { id } = await params
-    return await updateEmployeeController(request, id)
+    return await updateEmployeeController(request, id, session)
   } catch (err) {
     return handleApiError(err)
   }

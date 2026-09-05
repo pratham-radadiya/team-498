@@ -94,7 +94,7 @@ export async function updateAttendance(id, data, session) {
   const existing = await attendanceRepo.findAttendanceById(id)
   if (!existing) throw new NotFoundError('Attendance record not found')
 
-  const payload = { ...data, correctedBy: session.userId }
+  const payload = { ...data, correctedBy: session.employeeId }
   if (data.checkIn) payload.checkIn = new Date(data.checkIn)
   if ('checkOut' in data) payload.checkOut = data.checkOut ? new Date(data.checkOut) : null
 

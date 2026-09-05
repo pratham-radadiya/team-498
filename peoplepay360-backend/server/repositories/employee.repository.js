@@ -1,17 +1,32 @@
 import { prisma } from '../lib/prisma'
 
-// Every real User field except passwordHash (never expose that) — used
-// wherever an Employee response includes its linked login account.
-const USER_SELECT = { id: true, email: true, role: true, status: true, createdAt: true }
+// Every Employee field except passwordHash (never expose that) — Employee
+// is now the login account, so every read of it must go through this.
+export const EMPLOYEE_SAFE_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  status: true,
+  role: true,
+  department: true,
+  jobPosition: true,
+  workLocation: true,
+  company: true,
+  bankAccount: true,
+  workingScheduleId: true,
+  managerId: true,
+  createdAt: true,
+  updatedAt: true,
+}
 
 export function createEmployee(data) {
-  return prisma.employee.create({ data })
+  return prisma.employee.create({ data, select: EMPLOYEE_SAFE_SELECT })
 }
 
 export function findEmployeeById(id) {
   return prisma.employee.findUnique({
     where: { id },
-    include: { user: { select: USER_SELECT } },
+    select: EMPLOYEE_SAFE_SELECT,
   })
 }
 
@@ -20,8 +35,8 @@ export function findEmployeeById(id) {
 export function findEmployeeByIdWithCounts(id) {
   return prisma.employee.findUnique({
     where: { id },
-    include: {
-      user: { select: USER_SELECT },
+    select: {
+      ...EMPLOYEE_SAFE_SELECT,
       _count: {
         select: { contracts: true, attendances: true, timeOffRequests: true, allocations: true },
       },
@@ -29,8 +44,12 @@ export function findEmployeeByIdWithCounts(id) {
   })
 }
 
+export function findEmployeeByEmail(email) {
+  return prisma.employee.findUnique({ where: { email } })
+}
+
 export function updateEmployee(id, data) {
-  return prisma.employee.update({ where: { id }, data })
+  return prisma.employee.update({ where: { id }, data, select: EMPLOYEE_SAFE_SELECT })
 }
 
 export function deleteEmployee(id) {
@@ -44,7 +63,7 @@ export function listEmployeesForGrid({ skip, take, orderBy, where }) {
       take,
       orderBy,
       where,
-      include: { user: { select: USER_SELECT } },
+      select: EMPLOYEE_SAFE_SELECT,
     }),
     prisma.employee.count({ where }),
   ])

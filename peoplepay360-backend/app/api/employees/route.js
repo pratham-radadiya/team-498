@@ -3,12 +3,13 @@ import { ROLES } from '@/server/rbac/roles'
 import { handleApiError } from '@/server/lib/httpErrors'
 import { createEmployeeController } from '@/server/controllers/employee.controller'
 
-const NON_EMPLOYEE_ROLES = [ROLES.HR_MANAGER, ROLES.HR_PAYROLL_USER, ROLES.HR_PAYROLL_MANAGER, ROLES.ADMIN]
-
+// Creating an Employee now also provisions its login credentials and role
+// (Employee IS the login account) — restricted to Admin only, same as the
+// old Users module was.
 export async function POST(request) {
   try {
     const session = await withAuth()
-    requireRole(session, NON_EMPLOYEE_ROLES)
+    requireRole(session, [ROLES.ADMIN])
     return await createEmployeeController(request)
   } catch (err) {
     return handleApiError(err)

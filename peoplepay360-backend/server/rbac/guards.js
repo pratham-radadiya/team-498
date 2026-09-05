@@ -5,23 +5,24 @@ import { prisma } from '../lib/prisma'
 export class UnauthorizedError extends Error {}
 export class ForbiddenError extends Error {}
 
-// Re-checks the user against the DB on every call — never trusts the JWT payload
-// alone, so a user deactivated by Admin is rejected on their very next request.
-export async function resolveActiveUser(userId) {
-  if (!userId) {
+// Re-checks the employee against the DB on every call — never trusts the JWT
+// payload alone, so someone deactivated by Admin is rejected on their very
+// next request.
+export async function resolveActiveEmployee(employeeId) {
+  if (!employeeId) {
     throw new UnauthorizedError('Not authenticated')
   }
-  const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user || user.status !== 'Active') {
-    throw new UnauthorizedError('User not found or inactive')
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
+  if (!employee || employee.status !== 'Active') {
+    throw new UnauthorizedError('Employee not found or inactive')
   }
-  return { userId: user.id, employeeId: user.employeeId, role: user.role }
+  return { employeeId: employee.id, role: employee.role }
 }
 
 // Called as the first line of every route handler (except /api/auth/*).
 export async function withAuth() {
   const session = await getServerSession(authOptions)
-  return resolveActiveUser(session?.user?.userId)
+  return resolveActiveEmployee(session?.user?.employeeId)
 }
 
 export function requireRole(session, allowedRoles) {

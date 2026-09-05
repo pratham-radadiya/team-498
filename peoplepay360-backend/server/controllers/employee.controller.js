@@ -13,10 +13,10 @@ export async function getEmployeeController(id, session) {
   return Response.json(employee)
 }
 
-export async function updateEmployeeController(request, id) {
+export async function updateEmployeeController(request, id, session) {
   const body = await request.json()
   const data = updateEmployeeSchema.parse(body)
-  const employee = await employeeService.updateEmployee(id, data)
+  const employee = await employeeService.updateEmployee(id, data, session)
   return Response.json(employee)
 }
 

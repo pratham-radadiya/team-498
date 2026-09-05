@@ -46,7 +46,6 @@ async function main() {
   await prisma.allocation.deleteMany()
   await prisma.timeOffType.deleteMany()
   await prisma.attendance.deleteMany()
-  await prisma.user.deleteMany()
   await prisma.employee.updateMany({ data: { managerId: null } }) // break self-ref cycle
   await prisma.contract.deleteMany()
   await prisma.employee.deleteMany()
@@ -189,7 +188,9 @@ async function main() {
   const schedules = [schedule40h, nightShift, flexibleHybrid, partTime20h]
   const structures = [regularSalary, internSalary, contractorStructure]
 
-  async function makeEmployee({ name, email, department, jobPosition, workingScheduleId, bankAccount }) {
+  // Employee IS the login account now — every row needs a role + password.
+  async function makeEmployee({ name, email, department, jobPosition, workingScheduleId, bankAccount, role, password, status }) {
+    const passwordHash = await bcrypt.hash(password, 10)
     return prisma.employee.create({
       data: {
         name,
@@ -203,7 +204,9 @@ async function main() {
         // genuinely be null for at least one employee — default to a
         // generated account number, but callers can pass `null` explicitly.
         bankAccount: bankAccount === undefined ? faker.finance.accountNumber(12) : bankAccount,
-        status: 'Active',
+        status: status ?? 'Active',
+        role,
+        passwordHash,
       },
     })
   }
@@ -217,34 +220,30 @@ async function main() {
   const GMAIL_BASE = 'g00998650'
   const gmailAlias = (tag) => `${GMAIL_BASE}+${tag}@gmail.com`
 
-  const empDemo = await makeEmployee({ name: 'Aarav Mehta', email: gmailAlias('employee'), department: 'Engineering', jobPosition: 'Developer', workingScheduleId: schedule40h.id })
-  const hrManagerEmp = await makeEmployee({ name: 'Priya Sharma', email: gmailAlias('hrmanager'), department: 'HR', jobPosition: 'HR Officer', workingScheduleId: schedule40h.id })
-  const payrollUserEmp = await makeEmployee({ name: 'Rohan Gupta', email: gmailAlias('payrolluser'), department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id })
-  const payrollManagerEmp = await makeEmployee({ name: 'Neha Verma', email: gmailAlias('payrollmanager'), department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id })
-  const inactiveEmp = await makeEmployee({ name: 'Karan Singh', email: gmailAlias('inactive'), department: 'Support', jobPosition: 'Support Engineer', workingScheduleId: flexibleHybrid.id })
+  const adminEmp = await makeEmployee({ name: 'System Admin', email: gmailAlias('admin'), department: 'Administration', jobPosition: 'System Administrator', workingScheduleId: schedule40h.id, role: 'ADMIN', password: 'Admin@123' })
+  const empDemo = await makeEmployee({ name: 'Aarav Mehta', email: gmailAlias('employee'), department: 'Engineering', jobPosition: 'Developer', workingScheduleId: schedule40h.id, role: 'EMPLOYEE', password: 'Employee@123' })
+  const hrManagerEmp = await makeEmployee({ name: 'Priya Sharma', email: gmailAlias('hrmanager'), department: 'HR', jobPosition: 'HR Officer', workingScheduleId: schedule40h.id, role: 'HR_MANAGER', password: 'Manager@123' })
+  const payrollUserEmp = await makeEmployee({ name: 'Rohan Gupta', email: gmailAlias('payrolluser'), department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id, role: 'HR_PAYROLL_USER', password: 'Payroll@123' })
+  const payrollManagerEmp = await makeEmployee({ name: 'Neha Verma', email: gmailAlias('payrollmanager'), department: 'Finance', jobPosition: 'Payroll Specialist', workingScheduleId: schedule40h.id, role: 'HR_PAYROLL_MANAGER', password: 'Payroll@123' })
+  // Edge case: an Inactive login — proves withAuth()'s per-request DB re-check rejects it.
+  const inactiveEmp = await makeEmployee({ name: 'Karan Singh', email: gmailAlias('inactive'), department: 'Support', jobPosition: 'Support Engineer', workingScheduleId: flexibleHybrid.id, role: 'EMPLOYEE', password: 'Employee@123', status: 'Inactive' })
 
-  // Realistic small-team org structure: HR Manager is the root; everyone else
-  // (including the Admin's own linked employee, if any) reports to her.
+  // Realistic small-team org structure: Admin is the root; HR Manager reports
+  // to Admin, everyone else reports to the HR Manager.
+  await prisma.employee.update({ where: { id: hrManagerEmp.id }, data: { managerId: adminEmp.id } })
   await prisma.employee.update({ where: { id: empDemo.id }, data: { managerId: hrManagerEmp.id } })
   await prisma.employee.update({ where: { id: payrollUserEmp.id }, data: { managerId: hrManagerEmp.id } })
   await prisma.employee.update({ where: { id: payrollManagerEmp.id }, data: { managerId: hrManagerEmp.id } })
   await prisma.employee.update({ where: { id: inactiveEmp.id }, data: { managerId: hrManagerEmp.id } })
 
-  const demoUsers = [
-    { email: gmailAlias('admin'), password: 'Admin@123', role: 'ADMIN', employeeId: null },
-    { email: gmailAlias('employee'), password: 'Employee@123', role: 'EMPLOYEE', employeeId: empDemo.id },
-    { email: gmailAlias('hrmanager'), password: 'Manager@123', role: 'HR_MANAGER', employeeId: hrManagerEmp.id },
-    { email: gmailAlias('payrolluser'), password: 'Payroll@123', role: 'HR_PAYROLL_USER', employeeId: payrollUserEmp.id },
-    { email: gmailAlias('payrollmanager'), password: 'Payroll@123', role: 'HR_PAYROLL_MANAGER', employeeId: payrollManagerEmp.id },
-    // Edge case: an Inactive user — proves withAuth()'s per-request DB re-check rejects them.
-    { email: gmailAlias('inactive'), password: 'Employee@123', role: 'EMPLOYEE', employeeId: inactiveEmp.id, status: 'Inactive' },
+  const demoLogins = [
+    { email: gmailAlias('admin'), password: 'Admin@123', role: 'ADMIN' },
+    { email: gmailAlias('employee'), password: 'Employee@123', role: 'EMPLOYEE' },
+    { email: gmailAlias('hrmanager'), password: 'Manager@123', role: 'HR_MANAGER' },
+    { email: gmailAlias('payrolluser'), password: 'Payroll@123', role: 'HR_PAYROLL_USER' },
+    { email: gmailAlias('payrollmanager'), password: 'Payroll@123', role: 'HR_PAYROLL_MANAGER' },
+    { email: gmailAlias('inactive'), password: 'Employee@123', role: 'EMPLOYEE', status: 'Inactive' },
   ]
-  for (const u of demoUsers) {
-    const passwordHash = await bcrypt.hash(u.password, 10)
-    await prisma.user.create({
-      data: { email: u.email, passwordHash, role: u.role, employeeId: u.employeeId, status: u.status ?? 'Active' },
-    })
-  }
 
   // ---------- 4. BULK: additional Employees ----------
   const bulkEmployees = [empDemo, hrManagerEmp, payrollUserEmp, payrollManagerEmp, inactiveEmp]
@@ -260,6 +259,8 @@ async function main() {
       // "missing bank details" Payrun warning demo case (moved off the named
       // anchor employees, who all have complete profiles per request).
       ...(i === 0 ? { bankAccount: null } : {}),
+      role: 'EMPLOYEE',
+      password: 'Password@123',
     })
     // A few report to the HR Manager, for realistic org structure.
     if (i % 3 === 0) {
@@ -268,7 +269,7 @@ async function main() {
     bulkEmployees.push(emp)
   }
   // One deliberately manager-less, contract-less employee — edge case (new hire, nothing set up yet).
-  const newHire = await makeEmployee({ name: 'Zara Khan', email: 'zara@peoplepay360.com', department: 'Engineering', jobPosition: 'Developer', workingScheduleId: null })
+  const newHire = await makeEmployee({ name: 'Zara Khan', email: 'zara@peoplepay360.com', department: 'Engineering', jobPosition: 'Developer', workingScheduleId: null, role: 'EMPLOYEE', password: 'Password@123' })
   bulkEmployees.push(newHire)
 
   // ---------- 5. RELATIONS: Contracts ----------
@@ -413,7 +414,6 @@ async function main() {
 
   // ---------- 7. SUMMARY ----------
   const counts = {
-    users: await prisma.user.count(),
     employees: await prisma.employee.count(),
     workingSchedules: await prisma.workingSchedule.count(),
     contracts: await prisma.contract.count(),
@@ -427,7 +427,7 @@ async function main() {
   console.log('Seed complete. Row counts:', counts)
   console.log('Time off requests by status:', requestCount)
   console.log(`Demo logins (all "+tag" aliases of ${GMAIL_BASE}@gmail.com — real inbox, but Send Payslips emails still go through the fake Ethereal test SMTP account, not here):`)
-  for (const u of demoUsers) console.log(`  ${u.email} / ${u.password} (${u.role}${u.status === 'Inactive' ? ', INACTIVE' : ''})`)
+  for (const u of demoLogins) console.log(`  ${u.email} / ${u.password} (${u.role}${u.status === 'Inactive' ? ', INACTIVE' : ''})`)
 }
 
 main()
