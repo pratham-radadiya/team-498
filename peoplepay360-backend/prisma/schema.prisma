@@ -55,6 +55,8 @@ model Employee {
   jobPosition String?
   workLocation String?
   company     String?
+  // Phase 6: needed for the Payrun "missing bank details" warning check.
+  bankAccount String?
 
   // Phase 2: now a real FK — WorkingSchedule exists.
   workingScheduleId String?
@@ -362,7 +364,7 @@ model Payrun {
 model Payslip {
   id         String   @id @default(cuid())
   payrunId   String
-  payrun     Payrun   @relation(fields: [payrunId], references: [id])
+  payrun     Payrun   @relation(fields: [payrunId], references: [id], onDelete: Cascade)
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id])
 

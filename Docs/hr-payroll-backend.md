@@ -266,48 +266,75 @@ Phase 9 (seed data + final cross-module security gate) closes out after both rou
 Rather than keep upgrading placeholder-string FKs phase by phase (as happened with `workingScheduleId` in Phase 2 and `salaryStructureId` here), **all of Phase 5 and 6's models were added to `schema.prisma` in this same migration**: `SalaryStructure`, `SalaryRule`, `Payrun`, `Payslip`, `PayslipWarning` — with `Contract.salaryStructureId` upgraded from a placeholder string to a real FK now that `SalaryStructure` exists. Phases 5 and 6 below only need to add the service/controller/route layer on top of tables that already exist and are already migrated. `npx prisma validate` was run and one missing back-relation (`Contract.payslips`) was caught and fixed before migrating.
 
 ### Mock data seeded (`rain-skill:mock-data-seeding`)
-`prisma/seed.js` (extended, not replaced) now seeds a full deterministic dataset (`faker.seed(12345)`, wipe-and-reseed, guarded against `NODE_ENV=production` and non-local `DATABASE_URL`): 6 Users (one per role, fixed demo credentials, plus one deliberately `Inactive`), 21 Employees, 4 Working Schedules, 26 Contracts (some with Expired+Running history), 252 Attendance rows (30 weekdays × 12 employees), 3 Salary Structures with all 19 Rules (the PDF's exact 12-rule "Regular Salary" chain plus lighter Intern/Contractor structures), 3 Time Off Types, 12 Allocations, 9 Time Off Requests (6 Approved, 2 Pending, 1 Refused). Verified idempotent — re-running produced identical counts. Demo logins:
+`prisma/seed.js` (extended, not replaced) now seeds a full deterministic dataset (`faker.seed(12345)`, wipe-and-reseed, guarded against `NODE_ENV=production` and non-local `DATABASE_URL`): 6 Users (one per role, fixed demo credentials, plus one deliberately `Inactive`), 21 Employees, 4 Working Schedules, 24 Contracts (some with Expired+Running history), 252 Attendance rows (30 weekdays × 12 employees), 3 Salary Structures with all 19 Rules (the PDF's exact 12-rule "Regular Salary" chain plus lighter Intern/Contractor structures), 3 Time Off Types, 12 Allocations, 9 Time Off Requests (6 Approved, 2 Pending, 1 Refused). Verified idempotent — re-running produced identical counts.
+
+**Updated on request:** the 5 named demo accounts' emails now use Gmail `+tag` aliasing (`g00998650+<tag>@gmail.com`) so they all land in one real inbox for identity purposes. All 5 named employees now have every field filled (department, jobPosition, workLocation, company, workingScheduleId, bankAccount, and a manager — except the HR Manager herself, who is the org's root). The "missing bank account" warning demo case moved off the named accounts onto one anonymous bulk employee instead, so no named demo profile is deliberately incomplete. Demo logins:
 
 | Email | Password | Role |
 |---|---|---|
-| `admin@peoplepay360.com` | `Admin@123` | ADMIN |
-| `employee@peoplepay360.com` | `Employee@123` | EMPLOYEE |
-| `hrmanager@peoplepay360.com` | `Manager@123` | HR_MANAGER |
-| `payrolluser@peoplepay360.com` | `Payroll@123` | HR_PAYROLL_USER |
-| `payrollmanager@peoplepay360.com` | `Payroll@123` | HR_PAYROLL_MANAGER |
-| `inactive@peoplepay360.com` | `Employee@123` | EMPLOYEE, status `Inactive` — for testing the deactivated-user rejection |
+| `g00998650+admin@gmail.com` | `Admin@123` | ADMIN |
+| `g00998650+employee@gmail.com` | `Employee@123` | EMPLOYEE (Aarav Mehta) |
+| `g00998650+hrmanager@gmail.com` | `Manager@123` | HR_MANAGER (Priya Sharma — org root, no manager) |
+| `g00998650+payrolluser@gmail.com` | `Payroll@123` | HR_PAYROLL_USER (Rohan Gupta) |
+| `g00998650+payrollmanager@gmail.com` | `Payroll@123` | HR_PAYROLL_MANAGER (Neha Verma) |
+| `g00998650+inactive@gmail.com` | `Employee@123` | EMPLOYEE (Karan Singh), User status `Inactive` — for testing the deactivated-user rejection; the Employee record itself stays `Active` (a real person whose login got disabled, not an inactive employee) |
 
 ## Phase 5 — Salary Structure & Salary Rules (formula engine) *(Round 1)*
 
-**Schema already migrated** (see the note above) — this phase only adds `salaryStructure.{validator,controller,service,repository}.js`, `salaryRule.{…}.js`, and the formula engine on top of the existing tables.
+**Schema already migrated** (see the note above) — this phase only adds `salaryStructure.{validator,controller,service,repository}.js`, `salaryRule.{…}.js`, and the formula engine on top of the existing tables. ✅ DONE — see `Docs/api/phase-5-salary.md` for the full API contract.
 
 - **Models:** `SalaryStructure` (name, active), `SalaryRule` (structureId, name, code, category enum [Basic/Allowance/Gross/Deduction/Net], sequence, computationMethod enum [Fixed/Percentage/Formula], fixedAmount, percentageBase, percentageValue, formula string)
 - **Files:** `salaryStructure.{validator,controller,service,repository}.js`, `salaryRule.{…}.js`
-- **Core engine:** `lib/payroll/computeSalaryRules.js` — `computeSalaryRules(rules, context)` returns an array of payslip lines; iterate rules in ascending sequence, accumulate a `categories` map, evaluate `Formula` rules via `formulaEvaluator.js` with only `{ categories, wage, workedDays }` exposed
+- **Core engine:** `lib/payroll/computeSalaryRules.js` — `computeSalaryRules(rules, context)` returns `{ lines, categories, basic, gross, net }`; iterates rules in ascending sequence, accumulates a `categories` map keyed by rule `code`, evaluates `Formula` rules via `formulaEvaluator.js` (`expr-eval`, verified to have no function-call/require/global access — a pure math-expression sandbox) with only `{ categories, wage, workedDays }` exposed. Percentage resolves by a fixed convention: `ContractWage` → the wage passed in, `Basic`/`Gross` → `categories.BASIC`/`categories.GROSS`.
 - **Routes:** `/api/salary-structures` (+`/list`,`/options`,`/[id]`), `/api/salary-rules` (+`/list`,`/[id]`, always sorted by `sequence` by default) — all behind `withAuth()`
-- **Business rules:** rules always execute in sequence order; Percentage resolves against contract wage or an already-computed category; Formula sandbox has no network/filesystem access. Per the permission matrix: HR Payroll User gets **read-only** access (403 on POST/PATCH/DELETE at the controller layer, not just hidden in a UI); HR Payroll Manager and Admin get full CRUD; HR Manager and Employee get no access at all
+- **Business rules:** rules always execute in sequence order; Percentage resolves against contract wage or an already-computed category; Formula sandbox has no network/filesystem access. Per the permission matrix: HR Payroll User gets **read-only** access (403 on POST/PATCH/DELETE at the controller layer, not just hidden in a UI); HR Payroll Manager and Admin get full CRUD; HR Manager and Employee get no access at all. A rule's required fields depend on its own `computationMethod` (Fixed needs `fixedAmount`, Percentage needs `percentageBase`+`percentageValue`, Formula needs `formula`) — enforced via Zod `superRefine` at the API boundary
 - **Hooks:** `useSalaryStructuresGrid.js`, `useSalaryRulesGrid.js`
 - **Agent:** `rain-skill:backend-specialist` + `rain-skill:security-auditor` review of the formula sandbox boundary
-- **Verify:** reproduce the spec's worked 12-rule "Regular Salary" chain end-to-end and confirm Net matches a hand calculation
+- **Verify — all confirmed against the running server + real DB:**
+  - Reproduced the seeded 12-rule "Regular Salary" chain with wage=50000: engine's `NET: 74488.75` matched an independent hand calculation exactly (`GROSS 81500 − LWF 200 − PF 6000 − ESIC 611.25 − PT 200`)
+  - RBAC exactly per the matrix: HR Manager → **403** on everything (list included); HR Payroll User → list succeeds, create → **403**; HR Payroll Manager → full CRUD succeeds
+  - A Percentage rule missing `percentageValue` → **400** with a clear message; a valid Fixed rule → **201**
+  - Salary Rules list with no explicit sort → returned in ascending `sequence` order by default, matching the seeded structure exactly
+  - ⚠️ **Known friction, flagged not silently fixed:** HR Manager has full CRUD on Contracts (which reference `salaryStructureId`) but **zero** access to `/api/salary-structures/options` per the permission matrix's own "None" row — they can technically still set a Contract's `salaryStructureId` blind (Contract's PATCH doesn't restrict that specific field), but can't see a proper dropdown to pick one. This is what the matrix says, not a bug in the code; flagging in case the team wants to grant HR Manager read-only access to the options endpoint specifically.
 
-## Phase 6 — Payroll: Payrun, Payslip, PDF, Email *(Round 1)*
+## Phase 6 — Payroll: Payrun, Payslip, PDF, Email *(Round 1)* ✅ DONE — see `Docs/api/phase-6-payroll.md` for the full API contract
 
-- **Models:** `Payrun` (name, structureId, periodStart, periodEnd, status [Draft/Validated/Paid]), `Payslip` (payrunId, employeeId, contractId snapshot, status, workedDays, basic/gross/net snapshot, rule-line breakdown), `PayslipWarning` (payslipId, type [missing_bank/duplicate/...], message)
-- **Files:** `payrun.{validator,controller,service,repository}.js`, `payslip.{…}.js`
+- **Models:** `Payrun` (name, structureId, periodStart, periodEnd, status [Draft/Validated/Paid]), `Payslip` (payrunId, employeeId, contractId snapshot, status, workedDays, basic/gross/net snapshot, rule-line breakdown), `PayslipWarning` (payslipId, type [missing_bank/duplicate/no_contract], message). One schema fix mid-phase: `Payslip.payrun` needed `onDelete: Cascade` — deleting a Draft Payrun threw a real FK violation until this was added.
+- **Files:** `payrun.{validator,controller,service,repository}.js`, `payslip.{…}.js`, `lib/payroll/resolveApplicableContract.js` (shared with Phase 2's overlap logic), `lib/payroll/pdf/PayslipDocument.js`, `lib/payroll/email.js`
 - **Routes:** (all behind `withAuth()`)
   - `POST /api/payruns` — wizard step 2 only; creates the batch containing exactly the selected employees (step 1 scope data is passed through, never persisted alone)
+  - `POST /api/payruns/eligible-employees` — small necessary addition, not in the original route list: the wizard's step 2 needs *something* to populate its checkbox table with before a Payrun exists
   - `POST /api/payruns/list` (AG Grid), `GET /api/payruns/[id]`
   - `POST /api/payruns/[id]/compute` — resolves each employee's period-applicable contract + the Payrun's structure, runs `computeSalaryRules`, writes Payslips, detects warnings
   - `POST /api/payruns/[id]/validate`, `/mark-paid`, `/send-payslips` (bulk email)
   - `POST /api/payslips/list` (AG Grid), `GET /api/payslips/[id]`, `GET /api/payslips/[id]/pdf`
 - **Business rules:**
   - Payslip computation resolves the one contract valid for the Payrun's period (reuses Phase 2's resolution logic)
-  - Warnings must be surfaced before Validate can proceed
-  - Paid/finalized Payruns become immutable (enforced in `payrun.service.js`)
-  - Per the permission matrix: HR Payroll User gets Create + Read + Update but **no Delete** on Payruns/Payslips (guard the DELETE handler specifically, don't just omit it from routes); HR Payroll Manager and Admin get full CRUD; Employee gets Read on their own Payslips only; HR Manager gets no access at all
+  - `workedDays` is computed for real from Phase 3's Attendance records (`Present` + `checkOut` set, within the period) — not a placeholder
+  - Warnings detected at compute time: `missing_bank` (Employee has no `bankAccount`), `duplicate` (employee already has a Validated/Paid Payslip in a different, period-overlapping Payrun), `no_contract` (no applicable contract found — computation skipped for that Payslip only)
+  - Paid/finalized Payruns become immutable (enforced in `payrun.service.js`) — compute/validate/mark-paid/delete all reject with `409` once `status === 'Paid'`
+  - Payrun status only moves forward one step at a time: Draft→Validated→Paid, each action rejecting with `409` if the Payrun isn't in the required prior state
+  - Per the permission matrix: HR Payroll User gets Create + Read + Update but **no Delete** on Payruns/Payslips (guarded specifically, not just omitted from routes); HR Payroll Manager and Admin get full CRUD; Employee gets Read on their own Payslips only; HR Manager gets no access at all
 - **Hooks:** `usePayrunsGrid.js`, `usePayslipsGrid.js`
 - **Agent:** `rain-skill:backend-specialist` + `rain-skill:database-architect` (payslip line snapshot modeling)
-- **Verify:** run a full employee→payslip flow for 2+ employees, one deliberately missing bank info → warning appears; PDF downloads; bulk email send succeeds/logs; Payslips grid sorts by Net and filters by Status correctly
+- **Verify — all confirmed against the running server + real DB, real Attendance/Contract/SalaryStructure data:**
+  - Created a Payrun for 3 employees (one — Rohan — deliberately without a `bankAccount`); compute resolved each one's real Contract, pulled real `workedDays` from seeded Attendance, ran the full Regular Salary rule chain, and produced correct Net for each — Rohan's Payslip alone carried a `missing_bank` warning
+  - Full lifecycle: Draft →`validate`→ Validated (re-validating → `409`) →`mark-paid`→ Paid; after Paid, `compute`/`delete` → `409` "Paid and finalized"
+  - Created a 2nd, period-overlapping Payrun for the same employee after the first was Paid → compute correctly flagged a `duplicate` warning
+  - PDF: `GET /api/payslips/[id]/pdf` → real `%PDF-1.3` bytes (verified via `renderToBuffer`, written with `React.createElement` rather than JSX to avoid depending on this `.js`-only project's toolchain parsing JSX in non-`.jsx` files)
+  - Email: `send-payslips` on a Draft/Validated (non-Paid) Payrun → `409`; on the Paid one → sent 3 real emails through a genuine Ethereal test-SMTP account (later switched to a real Google Workspace SMTP account for actual inbox-delivery verification — see below), each returning a real `messageId` from the SMTP transaction (not mocked)
+  - RBAC exactly per the matrix: HR Manager → `403` on `list`; HR Payroll User → `403` on `DELETE`; EMPLOYEE → `200` on their own Payslip, `403` on someone else's, list silently scoped to their own
+  - Payslips grid: sorted by `net` descending and filtered by `status = Paid` → correct, correctly-ordered subset
+  - Found and fixed a real bug mid-verification: deleting a Draft Payrun threw a Prisma FK violation (`Payslip_payrunId_fkey`) — `Payslip.payrun` was missing `onDelete: Cascade`; added, migrated, and delete now returns `204`
+
+### Infrastructure fix made during this phase: cross-origin access
+The team's actual dev setup runs the frontend on a separate machine, reaching this backend through a forwarded tunnel URL — a genuinely cross-origin, cross-machine setup that surfaced two real problems, both fixed:
+1. **No CORS headers** — `proxy.js` now reflects the request's `Origin` back (dev-permissive, not a fixed whitelist), sets `Access-Control-Allow-Credentials: true`, and answers `OPTIONS` preflight requests directly with `204` + the same headers. Its matcher was widened from excluding `/api/auth/*` to covering all of `/api/*`, since CORS headers are needed on the auth routes too (that's exactly where the reported failure was).
+2. **`SameSite=Lax` cookies are never sent on cross-origin requests at all**, regardless of CORS — NextAuth's session/callback/CSRF cookies are now explicitly configured with `sameSite: 'none', secure: true` in `lib/auth.js`. This requires HTTPS, which the tunnel already provides; verified this doesn't break local `curl`-based testing over plain HTTP (curl's cookie jar doesn't enforce the `Secure` attribute the way a real browser does).
+- ⚠️ **The frontend side of this is out of my hands**: with `sameSite: 'none'`, browsers still won't send the cookie unless the frontend's own fetch/axios calls explicitly opt in — `credentials: 'include'` for `fetch`, or `withCredentials: true` for `axios`. Flagging for whoever owns that codebase.
+
+### Switched from fake to real SMTP, on request, to verify actual inbox delivery
+The Ethereal test account (above) proves the SMTP *call* succeeds but never delivers anywhere real. To verify actual delivery, `.env`'s `SMTP_*` vars were switched to a real Google Workspace account (a university email, authenticated via a Gmail App Password — same mechanism as personal Gmail, since App Passwords are a Google Workspace/Gmail feature) with `SMTP_HOST="smtp.gmail.com"`. Re-ran the full Payrun lifecycle end-to-end and called `send-payslips` again: the returned `messageId`s now carry the real domain (proving they went through the authenticated account, not Ethereal), and delivery to the Gmail `+tag` demo addresses was left for manual inbox confirmation. No credentials are recorded here — `.env` is gitignored; only the pattern is documented.
 
 ## Phase 7 — Payroll Dashboard (aggregation APIs) *(Round 1)*
 
