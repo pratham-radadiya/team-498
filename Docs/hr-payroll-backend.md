@@ -359,19 +359,30 @@ The team's actual dev setup runs the frontend on a separate machine, reaching th
 ### Switched from fake to real SMTP, on request, to verify actual inbox delivery
 The Ethereal test account (above) proves the SMTP *call* succeeds but never delivers anywhere real. To verify actual delivery, `.env`'s `SMTP_*` vars were switched to a real Google Workspace account (a university email, authenticated via a Gmail App Password — same mechanism as personal Gmail, since App Passwords are a Google Workspace/Gmail feature) with `SMTP_HOST="smtp.gmail.com"`. Re-ran the full Payrun lifecycle end-to-end and called `send-payslips` again: the returned `messageId`s now carry the real domain (proving they went through the authenticated account, not Ethereal), and delivery to the Gmail `+tag` demo addresses was left for manual inbox confirmation. No credentials are recorded here — `.env` is gitignored; only the pattern is documented.
 
-## Phase 7 — Payroll Dashboard (aggregation APIs) *(Round 1)*
+## Phase 7 — Payroll Dashboard (aggregation APIs) *(Round 1)* ✅ DONE — see `Docs/api/phase-7-dashboard.md` for the full API contract
 
-- **Files:** `dashboard.{controller,service,repository}.js` (no create/update, so no validator beyond a query-filter schema)
-- **Routes:** `POST /api/dashboard/kpis`, `/salary-by-department`, `/salary-trend`, `/attendance-overview`, `/timeoff-overview`, `/department-overview` — all accept a `{ period, department, employeeType, company }` filter body (POST, not GET, to keep the filter contract consistent with the grid endpoints), all behind `withAuth()`
-- **Implementation:** Prisma `aggregate`/`groupBy` across Employee/Contract/Payslip/Attendance/TimeOff — no hardcoded figures
-- **Minimum content bar (verbatim from the mockup's own dashboard spec note — treat as the acceptance floor, not a ceiling):**
-  - Salary payment KPIs: total net salary, number of payslips, paid/pending state
-  - Department overview: headcount and/or total salary by department
-  - Time Off overview: approved leave days, pending requests, remaining balances by type
-  - Attendance overview: present/absent/late counts, overtime or data-quality gaps (e.g. missing check-outs)
-  - At least 2 visual summaries (bar/line/stacked chart or compact table) — not KPI cards alone
+Two open items from this section's original text were resolved by explicit decision before building:
+- **HR Manager dashboard access** (flagged above as unspecified by the PDF): confirmed **read access**, matching the plan's own default and `rbac/roles.js`'s existing `payrollDashboard: { readOnly: PAYROLL_ROLES.concat(ROLES.HR_MANAGER) }` — no permission-matrix change was needed, it already had this right.
+- **`employeeType` in the filter body**: no such field exists anywhere in the schema (Employee/Contract have no employee-type column). Rather than invent one or silently drop it, it's implemented as a **proxy for the employee's current Running contract's Salary Structure** (`Regular Salary`/`Intern Salary`/`Contractor` — the closest real analog to "employee type" this data actually has). The filter value is a `SalaryStructure` id, the same id `GET /api/salary-structures/options` already returns.
+
+- **Files:** `dashboard.validator.js` (just the filter schema — no create/update on this module), `dashboard.controller.js`, `dashboard.service.js`, `dashboard.repository.js`
+- **Routes:** `POST /api/dashboard/kpis`, `/salary-by-department`, `/salary-trend`, `/attendance-overview`, `/timeoff-overview`, `/department-overview` — all accept a `{ periodStart, periodEnd, department, employeeType, company }` filter body (POST, not GET, to keep the filter contract consistent with the grid endpoints), all behind `withAuth()` + `requireRole([HR_MANAGER, HR_PAYROLL_USER, HR_PAYROLL_MANAGER, ADMIN])`
+- **Implementation:** Prisma `aggregate`/`groupBy` across Payslip/Attendance/TimeOffRequest/Allocation/Employee — no hardcoded figures. Cross-relation breakdowns (by `Employee.department`, by month, by `TimeOffType.name`) aren't expressible in a single Prisma `groupBy` — those are fetched flat with the needed relation `select`ed, then reduced into groups in `dashboard.service.js`, not the repository (repository stays Prisma-only, no business logic, same rule as every other module)
+- **Business rules:**
+  - `periodStart`/`periodEnd` filter on a simple "date falls within range" check (on `Payrun.periodStart` for salary figures, `Attendance.checkIn` for attendance, `TimeOffRequest.startDate` for time off) — not full interval-overlap logic like Contract/Payrun's own conflict checks; a dashboard filter doesn't need that precision
+  - `salary-by-department` aggregates **realized payroll spend** (actual Payslip `net`, i.e. money actually computed/paid) — deliberately distinct from `department-overview`, which aggregates **current org structure** (headcount + current Running-contract wage) — the two answer different questions ("what did we pay" vs "who works where, what do we currently pay them") despite the plan's original text bundling "headcount and/or total salary by department" as one bullet
+  - "At least 2 visual summaries" (the mockup's own content bar) is a **frontend** requirement — the API's job here stops at returning pre-grouped data shaped for a chart (by-department, by-month, by-status/type); which endpoints become which chart types is a frontend decision, not documented as a backend deliverable
 - **Agent:** `rain-skill:database-architect` (query design) + `rain-skill:backend-specialist`
-- **Verify:** changing filters changes the numbers; hand-verify one KPI against seeded data
+- **Verify — all confirmed against the running server + real DB:**
+  - With no Payruns computed yet: `kpis` → `{totalNetSalary: 0, payslipCount: 0, byStatus: []}`; `salary-by-department`/`salary-trend` → `[]` — no fake placeholder numbers, genuinely empty until real data exists
+  - Created a real Payrun (3 employees: Aarav/Engineering, Priya/HR, Rohan/Finance) and computed it → `kpis` returned `{totalNetSalary: 220419.4125, payslipCount: 3, byStatus: [{status: "Draft", count: 3, netSalary: 220419.4125}]}`, matching the sum of the 3 payslips' actual computed `net` exactly
+  - `salary-by-department` with no filter → 3 rows (Engineering/HR/Finance), each with the correct single-payslip net; filtered to `{department: "Finance"}` → only the Finance row, same number — **filters change the numbers**
+  - `salary-trend` → one bucket `{month: "2026-08", totalNetSalary: 220419.4125, payslipCount: 3}`, correctly derived from the Payrun's `periodStart`
+  - `employeeType` filter (Regular Salary structure id) → `kpis` narrowed from 3 payslips/`220419.4125` down to 1 payslip/`119271.5125` (only Rohan's contract used that structure) — proxy filter genuinely discriminates, not a no-op
+  - `attendance-overview` (real seeded data, no filter) → `{byStatus: [{status: "Present", count: 254, overtimeHours: 434.58...}], missingCheckouts: 0}`
+  - `timeoff-overview` (real seeded data) → `requestsByStatus` matching the seed's 6 Approved/2 Pending/1 Refused exactly; `remainingByType` correctly computed `allocated - taken` per type (e.g. Paid Time Off: `200 allocated, 11 taken, 189 remaining`)
+  - `department-overview` → 7 departments (including "Unassigned" for employees with no department set, and "Administration" for the System Admin with `avgWage: 0` since Admin has no Contract) — headcount and avgWage both correct against the seeded org
+  - RBAC: EMPLOYEE → **403** `"Insufficient role for this action"`; HR Manager → **200** with real data (confirmed decision above); Admin → **200**
 
 ## Phase 8 — Round 2: Role-Restriction Hardening (module by module, Excalidraw nav order)
 
@@ -385,8 +396,7 @@ Round 1 delivered every module working end-to-end for Admin, already behind `wit
   - Verify: EMPLOYEE submits a request → visible only to them and their approver; EMPLOYEE attempting to approve/refuse or edit a Time Off Type → 403
 - [ ] **8.4 Payroll — Payruns, Payslips, Structures, Rules (hardened together, one module per the mockup's single `Payroll ▼` dropdown)** — HR Manager gets 403 on all four; HR Payroll User gets CRU-no-Delete on Payruns/Payslips and read-only on Structures/Rules; HR Payroll Manager/Admin keep full CRUD; EMPLOYEE gets read-only on their own Payslips
   - Verify: HR Payroll User attempts DELETE on a Payrun → 403; attempts PATCH on a Salary Rule → 403; EMPLOYEE can view own Payslip PDF but not another employee's
-- [ ] **8.5 Payroll Dashboard** — apply the confirmed (or default) dashboard-access rule from the permission matrix; EMPLOYEE gets 403
-  - Verify: role-by-role check against the matrix's Dashboard row
+- [x] **8.5 Payroll Dashboard** — apply the confirmed dashboard-access rule from the permission matrix; EMPLOYEE gets 403. (✅ already done — built with role-gating from the start rather than deferred to this round, matching how every other phase above actually shipped; see Phase 7's verify section for the role-by-role evidence)
 - **Agent:** `rain-skill:backend-specialist` (guard wiring) + `rain-skill:security-auditor` (per-module boundary review, folded into each 8.x verify step rather than one pass at the very end)
 
 ## Phase 9 — Seed Data & Final Security/Verification Gate
