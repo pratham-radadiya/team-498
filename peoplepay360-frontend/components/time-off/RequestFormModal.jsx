@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { canPerformAction } from '@/lib/rbac';
-import { X, Calendar, Save, Trash2, AlertCircle, ChevronDown, CheckCircle2, XCircle } from 'lucide-react';
+import { formatDate, sanitizeDateInput } from '@/lib/formatters';
+import { X, Calendar, Save, Trash2, AlertCircle, ChevronDown, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 export default function RequestFormModal({
   isOpen,
@@ -65,11 +66,29 @@ export default function RequestFormModal({
     }
   }, [isOpen, requestId, isCreate, fetchRequestById, employeeOptions, typeOptions]);
 
+  const durationDays = useMemo(() => {
+    if (!formData.startDate || !formData.endDate) return 0;
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }, [formData.startDate, formData.endDate]);
+
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let { name, value, type } = e.target;
+    if (type === 'date' && value) {
+      value = sanitizeDateInput(value);
+    }
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'startDate' && (!prev.endDate || prev.endDate < value)) {
+        next.endDate = value;
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -255,35 +274,65 @@ export default function RequestFormModal({
               </div>
 
               {/* Date Range */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-bold text-slate-800 mb-2">
-                    Start Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleChange}
-                    required
-                    disabled={!isCreate}
-                    className={`${inputClassName} ${!isCreate ? 'disabled:opacity-60' : ''}`}
-                  />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Request Period & Duration
+                  </span>
+                  {durationDays > 0 && (
+                    <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-2xs">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Duration: {durationDays} Day{durationDays !== 1 ? 's' : ''}</span>
+                    </span>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-800 mb-2">
-                    End Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    required
-                    disabled={!isCreate}
-                    className={`${inputClassName} ${!isCreate ? 'disabled:opacity-60' : ''}`}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleChange}
+                      placeholder="YYYY-MM-DD"
+                      min="1900-01-01"
+                      max="2100-12-31"
+                      required
+                      disabled={!isCreate}
+                      className={`${inputClassName} ${!isCreate ? 'disabled:opacity-60' : ''}`}
+                    />
+                    {formData.startDate && (
+                      <p className="text-[11px] font-semibold text-indigo-600 mt-1 pl-1">
+                        Starts: {formatDate(formData.startDate)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      End Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={formData.endDate}
+                      onChange={handleChange}
+                      placeholder="YYYY-MM-DD"
+                      min={formData.startDate || "1900-01-01"}
+                      max="2100-12-31"
+                      required
+                      disabled={!isCreate}
+                      className={`${inputClassName} ${!isCreate ? 'disabled:opacity-60' : ''}`}
+                    />
+                    {formData.endDate && (
+                      <p className="text-[11px] font-semibold text-indigo-600 mt-1 pl-1">
+                        Ends: {formatDate(formData.endDate)}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 

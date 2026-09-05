@@ -42,6 +42,33 @@ export function usePayslips() {
     return `/api/payslips/${id}/pdf`;
   }, []);
 
+  const downloadPdf = useCallback(async (id, employeeName) => {
+    if (!id || id === 'undefined') {
+      const msg = 'Cannot download PDF: Invalid or missing payslip ID';
+      console.error(msg);
+      throw new Error(msg);
+    }
+    try {
+      const response = await apiClient.get(`/api/payslips/${id}/pdf`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const cleanName = employeeName ? String(employeeName).trim().replace(/\s+/g, '_') : id;
+      link.setAttribute('download', `Payslip_${cleanName}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Blob download error:', err);
+      const msg = err.response?.data?.error || err.message || 'Failed to download PDF payslip';
+      throw new Error(msg);
+    }
+  }, []);
+
   const deletePayslip = useCallback(async (id) => {
     try {
       await apiClient.delete(`/api/payslips/${id}`);
@@ -59,6 +86,7 @@ export function usePayslips() {
     fetchPayslips,
     fetchPayslipById,
     getPdfUrl,
+    downloadPdf,
     deletePayslip,
   };
 }

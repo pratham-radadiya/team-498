@@ -13,9 +13,8 @@ import { Award, Plus, RefreshCw, Layers } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AllocationsPage() {
-  const { session } = useAuthSession();
-  const currentUserRole = session?.role || 'EMPLOYEE';
-  const canGrant = canPerformAction(currentUserRole, 'timeOff', 'approve');
+  const { role: currentUserRole } = useAuthSession();
+  const canGrant = canPerformAction(currentUserRole, 'timeOffAllocations', 'create');
 
   const {
     fetchAllocationById,

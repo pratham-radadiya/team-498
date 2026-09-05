@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useSidebar } from '@/context/SidebarContext';
-import { canAccessModule } from '@/lib/rbac';
+import { canAccessModule, canAccessPath } from '@/lib/rbac';
 import {
   Users,
   FileText,
@@ -43,6 +43,24 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
     }
   };
 
+  const timeOffPaths = [
+    { path: '/time-off/dashboard', label: 'Dashboard' },
+    { path: '/time-off/requests', label: 'Requests' },
+    { path: '/time-off/allocations', label: 'Allocations' },
+    { path: '/time-off/types', label: 'Time Off Types' },
+  ];
+
+  const payrollPaths = [
+    { path: '/payroll/dashboard', label: 'Dashboard' },
+    { path: '/payroll/payruns', label: 'Payruns' },
+    { path: '/payroll/payslips', label: 'Payslips' },
+    { path: '/payroll/structures', label: 'Salary Structures' },
+    { path: '/payroll/rules', label: 'Salary Rules' },
+  ];
+
+  const visibleTimeOffPaths = timeOffPaths.filter((item) => canAccessPath(role, item.path));
+  const visiblePayrollPaths = payrollPaths.filter((item) => canAccessPath(role, item.path));
+
   // Reusable Nav Content
   const navContent = (
     <div className="flex flex-col h-full select-none">
@@ -75,7 +93,7 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
       {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-2 custom-scrollbar">
         {/* Employees Module */}
-        {canAccessModule(role, 'employees') && (
+        {canAccessPath(role, '/employees') && (
           <Link
             href="/employees"
             onClick={handleNavClick}
@@ -91,7 +109,7 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
         )}
 
         {/* Contracts Module */}
-        {canAccessModule(role, 'contracts') && (
+        {canAccessPath(role, '/contracts') && (
           <Link
             href="/contracts"
             onClick={handleNavClick}
@@ -107,7 +125,7 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
         )}
 
         {/* Attendance Module */}
-        {canAccessModule(role, 'attendance') && (
+        {canAccessPath(role, '/attendance') && (
           <Link
             href="/attendance"
             onClick={handleNavClick}
@@ -123,11 +141,11 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
         )}
 
         {/* Time Off Module */}
-        {canAccessModule(role, 'timeOff') && (
+        {visibleTimeOffPaths.length > 0 && (
           <div className="space-y-1">
             <button
               onClick={() => toggleMenu('timeOff')}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <Calendar className="w-4.5 h-4.5 shrink-0" />
@@ -142,65 +160,36 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
 
             {openMenus.timeOff && (
               <div className="pl-6 pr-1 space-y-1 py-1 border-l-2 border-slate-200 ml-5">
-                <Link
-                  href="/time-off/dashboard"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/time-off/dashboard'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/dashboard' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Dashboard</span>
-                </Link>
-                <Link
-                  href="/time-off/requests"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/time-off/requests'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/requests' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Requests</span>
-                </Link>
-                <Link
-                  href="/time-off/allocations"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/time-off/allocations'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/allocations' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Allocations</span>
-                </Link>
-                <Link
-                  href="/time-off/types"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/time-off/types'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/time-off/types' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Time Off Types</span>
-                </Link>
+                {visibleTimeOffPaths.map((item) => (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={handleNavClick}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      pathname === item.path
+                        ? 'text-indigo-600 bg-indigo-50 font-bold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        pathname === item.path ? 'bg-indigo-600' : 'bg-slate-400'
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
         )}
 
         {/* Payroll Module */}
-        {canAccessModule(role, 'payroll') && (
+        {visiblePayrollPaths.length > 0 && (
           <div className="space-y-1">
             <button
               onClick={() => toggleMenu('payroll')}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <CreditCard className="w-4.5 h-4.5 shrink-0" />
@@ -215,66 +204,25 @@ export default function Sidebar({ mobileOpen: propsMobileOpen, onMobileClose: pr
 
             {openMenus.payroll && (
               <div className="pl-6 pr-1 space-y-1 py-1 border-l-2 border-slate-200 ml-5">
-                <Link
-                  href="/payroll/dashboard"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/payroll/dashboard'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/dashboard' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Dashboard</span>
-                </Link>
-                <Link
-                  href="/payroll/payruns"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/payroll/payruns'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/payruns' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Payruns</span>
-                </Link>
-                <Link
-                  href="/payroll/payslips"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/payroll/payslips'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/payslips' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Payslips</span>
-                </Link>
-                <Link
-                  href="/payroll/structures"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/payroll/structures'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/structures' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Salary Structures</span>
-                </Link>
-                <Link
-                  href="/payroll/rules"
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    pathname === '/payroll/rules'
-                      ? 'text-indigo-600 bg-indigo-50 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${pathname === '/payroll/rules' ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-                  <span>Salary Rules</span>
-                </Link>
+                {visiblePayrollPaths.map((item) => (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={handleNavClick}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      pathname === item.path
+                        ? 'text-indigo-600 bg-indigo-50 font-bold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        pathname === item.path ? 'bg-indigo-600' : 'bg-slate-400'
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
               </div>
             )}
           </div>

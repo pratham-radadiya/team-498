@@ -76,7 +76,7 @@ export default function TimeOffTypesPage() {
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
 
-              {canPerformAction(role, 'timeOff', 'create') && (
+              {canPerformAction(role, 'timeOffTypes', 'create') && (
                 <button
                   onClick={() => {
                     setSelectedTypeId(null);

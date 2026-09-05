@@ -13,9 +13,8 @@ import { Calendar, Plus, RefreshCw, Award, Layers } from 'lucide-react';
 import Link from 'next/link';
 
 export default function TimeOffRequestsPage() {
-  const { session } = useAuthSession();
-  const currentUserRole = session?.role || 'EMPLOYEE';
-  const canApprove = canPerformAction(currentUserRole, 'timeOff', 'approve');
+  const { role: currentUserRole } = useAuthSession();
+  const canApprove = canPerformAction(currentUserRole, 'timeOffRequests', 'approve');
 
   const {
     fetchRequestById,

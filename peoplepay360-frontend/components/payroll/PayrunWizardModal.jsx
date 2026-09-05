@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { formatCurrency, formatDate, sanitizeDateInput } from '@/lib/formatters';
 import { X, CreditCard, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, ChevronDown, Check } from 'lucide-react';
 
 export default function PayrunWizardModal({
@@ -232,7 +232,9 @@ export default function PayrunWizardModal({
                   <input
                     type="date"
                     value={periodStart}
-                    onChange={(e) => setPeriodStart(e.target.value)}
+                    onChange={(e) => setPeriodStart(sanitizeDateInput(e.target.value))}
+                    min="1900-01-01"
+                    max="2099-12-31"
                     required
                     className={inputClassName}
                   />
@@ -245,7 +247,9 @@ export default function PayrunWizardModal({
                   <input
                     type="date"
                     value={periodEnd}
-                    onChange={(e) => setPeriodEnd(e.target.value)}
+                    onChange={(e) => setPeriodEnd(sanitizeDateInput(e.target.value))}
+                    min="1900-01-01"
+                    max="2099-12-31"
                     required
                     className={inputClassName}
                   />

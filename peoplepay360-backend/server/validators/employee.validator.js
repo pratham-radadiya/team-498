@@ -6,15 +6,16 @@ const roleEnum = z.enum(Object.values(ROLES))
 
 export const createEmployeeSchema = z.object({
   name: z.string().min(1),
-  email: z.email(),
+  email: z.string().email(),
   password: z.string().min(8),
   role: roleEnum,
-  department: z.string().optional(),
-  jobPosition: z.string().optional(),
-  workLocation: z.string().optional(),
-  company: z.string().optional(),
-  workingScheduleId: z.string().optional(),
-  managerId: z.string().optional(),
+  department: z.string().nullable().optional(),
+  jobPosition: z.string().nullable().optional(),
+  workLocation: z.string().nullable().optional(),
+  company: z.string().nullable().optional(),
+  bankAccount: z.string().nullable().optional(),
+  workingScheduleId: z.string().nullable().optional(),
+  managerId: z.string().nullable().optional(),
   status: z.enum(['Active', 'Inactive']).optional(),
 })
 

@@ -25,16 +25,20 @@ export default function TimeOffDashboardPage() {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const [reqRes, allocRes, typesRes] = await Promise.all([
+        const [reqRes, allocRes, typesRes] = await Promise.allSettled([
           apiClient.post('/api/timeoff/requests/list', { startRow: 0, endRow: 10 }),
           apiClient.post('/api/timeoff/allocations/list', { startRow: 0, endRow: 50 }),
           apiClient.get('/api/timeoff/types/options'),
         ]);
 
-        const reqRows = reqRes.data?.rows || [];
-        const reqCount = reqRes.data?.rowCount || reqRows.length;
-        const allocRows = allocRes.data?.rows || [];
-        const typeList = typesRes.data || [];
+        const reqData = reqRes.status === 'fulfilled' ? reqRes.value.data : null;
+        const allocData = allocRes.status === 'fulfilled' ? allocRes.value.data : null;
+        const typeData = typesRes.status === 'fulfilled' ? typesRes.value.data : null;
+
+        const reqRows = reqData?.rows || (Array.isArray(reqData) ? reqData : []);
+        const reqCount = reqData?.rowCount || reqRows.length;
+        const allocRows = allocData?.rows || (Array.isArray(allocData) ? allocData : []);
+        const typeList = Array.isArray(typeData) ? typeData : typeData?.rows || [];
 
         const pending = reqRows.filter(
           (r) => r.status === 'To Approve' || r.status === 'Pending'

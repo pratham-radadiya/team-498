@@ -125,18 +125,26 @@ export default function PayslipList({
         pinned: 'right',
         sortable: false,
         filter: false,
-        cellRenderer: (params) => (
-          <div className="flex justify-center items-center h-full py-1">
-            <button
-              onClick={() => onSelectPayslip && onSelectPayslip(params.value)}
-              className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
-              title="View Payslip Details"
-            >
-              <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
-              <span className="text-[11px]">View</span>
-            </button>
-          </div>
-        ),
+        cellRenderer: (params) => {
+          const targetId = params.data?.id || params.data?._id || params.value || params.data?.payslipId;
+          return (
+            <div className="flex justify-center items-center h-full py-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSelectPayslip && targetId && targetId !== 'undefined') {
+                    onSelectPayslip(targetId);
+                  }
+                }}
+                className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
+                title="View Payslip Details"
+              >
+                <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
+                <span className="text-[11px]">View</span>
+              </button>
+            </div>
+          );
+        },
       },
     ],
     [onSelectPayslip]
@@ -163,7 +171,12 @@ export default function PayslipList({
           cacheBlockSize={20}
           maxBlocksInCache={10}
           infiniteInitialRowCount={50}
-          onRowClicked={(e) => onSelectPayslip && onSelectPayslip(e.data?.id)}
+          onRowClicked={(e) => {
+            const targetId = e.data?.id || e.data?._id || e.data?.payslipId;
+            if (onSelectPayslip && targetId && targetId !== 'undefined') {
+              onSelectPayslip(targetId);
+            }
+          }}
           rowHeight={48}
           headerHeight={40}
           rowSelection="single"

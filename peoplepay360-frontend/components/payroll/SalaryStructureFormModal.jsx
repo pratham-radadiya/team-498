@@ -21,7 +21,7 @@ export default function SalaryStructureFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const canManage = canPerformAction(currentUserRole, 'payroll', 'approve');
+  const canManage = canPerformAction(currentUserRole, 'salaryStructures', 'edit');
 
   const [formData, setFormData] = useState({
     name: '',

@@ -5,7 +5,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { formatDateTime, formatWorkedHours, getStatusBadgeClass } from '@/lib/formatters';
 import { SkeletonTable } from '@/components/ui/Skeleton';
-import { Clock, LogIn, LogOut, Eye, ChevronRight, ChevronLeft, User } from 'lucide-react';
+import { Clock, LogIn, LogOut, Eye, ChevronRight, ChevronLeft, User, FileText } from 'lucide-react';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -36,9 +36,23 @@ export default function AttendanceList({
                 {params.value || params.data?.employeeId || 'Employee'}
               </span>
               <span className="text-[10px] text-slate-500 block leading-none">
-                ID: {params.data?.employeeId}
+                ID: {params.data?.employeeId || '—'}
               </span>
             </div>
+          </div>
+        ),
+      },
+      {
+        headerName: 'Contract ID',
+        field: 'contractId',
+        flex: 1.5,
+        minWidth: 140,
+        cellRenderer: (params) => (
+          <div className="flex items-center gap-1.5 py-1 font-mono text-xs font-bold text-slate-700">
+            <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="truncate" title={params.value || params.data?.contractName || params.data?.contract?.id}>
+              {params.value || params.data?.contractName || params.data?.contract?.id || '—'}
+            </span>
           </div>
         ),
       },

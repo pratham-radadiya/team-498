@@ -14,9 +14,8 @@ import { Layers, Plus, RefreshCw, FileCode } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SalaryStructuresPage() {
-  const { session } = useAuthSession();
-  const currentUserRole = session?.role || 'EMPLOYEE';
-  const canManage = canPerformAction(currentUserRole, 'payroll', 'approve');
+  const { role: currentUserRole } = useAuthSession();
+  const canManage = canPerformAction(currentUserRole, 'salaryStructures', 'create');
 
   const {
     fetchStructureById,

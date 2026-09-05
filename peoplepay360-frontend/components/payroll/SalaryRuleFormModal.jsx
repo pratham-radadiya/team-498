@@ -22,7 +22,7 @@ export default function SalaryRuleFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const canManage = canPerformAction(currentUserRole, 'payroll', 'approve');
+  const canManage = canPerformAction(currentUserRole, 'salaryRules', 'edit');
 
   const [formData, setFormData] = useState({
     structureId: '',

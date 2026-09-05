@@ -23,6 +23,7 @@ export default function PayslipDetailModal({
   payslipId,
   fetchPayslipById,
   getPdfUrl,
+  downloadPdf,
   deletePayslip,
   currentUserRole,
   onSuccess,
@@ -32,7 +33,7 @@ export default function PayslipDetailModal({
   const [error, setError] = useState('');
   const [payslipData, setPayslipData] = useState(null);
 
-  const canManage = canPerformAction(currentUserRole, 'payroll', 'approve');
+  const canDelete = canPerformAction(currentUserRole, 'payslips', 'delete');
 
   useEffect(() => {
     if (isOpen && payslipId) {
@@ -66,6 +67,31 @@ export default function PayslipDetailModal({
 
   const isParentPaid = payslipData?.payrunStatus === 'Paid' || payslipData?.status === 'Paid';
 
+  const handleDownloadPdf = async () => {
+    const targetId = payslipId || payslipData?.id || payslipData?._id;
+    if (!targetId || targetId === 'undefined') {
+      setError('Cannot download PDF: Payslip ID is missing or invalid.');
+      return;
+    }
+    try {
+      setError('');
+      if (downloadPdf) {
+        await downloadPdf(targetId, payslipData?.employeeName);
+      } else {
+        const link = document.createElement('a');
+        const url = getPdfUrl ? getPdfUrl(targetId) : `/api/payslips/${targetId}/pdf`;
+        link.href = url;
+        const cleanName = payslipData?.employeeName ? String(payslipData.employeeName).trim().replace(/\s+/g, '_') : targetId;
+        link.setAttribute('download', `Payslip_${cleanName}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to download payslip PDF');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-md animate-fade-in">
       <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-3xl flex flex-col shadow-2xl overflow-hidden my-auto max-h-[90vh]">
@@ -95,15 +121,14 @@ export default function PayslipDetailModal({
 
           <div className="flex items-center gap-3">
             {/* Print / Download PDF Button */}
-            <a
-              href={getPdfUrl(payslipId)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition-all"
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>Print PDF</span>
-            </a>
+            </button>
 
             <button
               onClick={onClose}
@@ -249,7 +274,7 @@ export default function PayslipDetailModal({
         {/* Footer */}
         <div className="px-8 py-5 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between">
           <div>
-            {!isParentPaid && canManage && (
+            {!isParentPaid && canDelete && (
               <button
                 type="button"
                 onClick={handleDelete}

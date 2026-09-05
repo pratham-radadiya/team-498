@@ -23,7 +23,22 @@ apiClient.interceptors.response.use(
       }
 
       // Format custom error message from backend
-      const customMessage = data?.error || data?.message || 'An unexpected error occurred';
+      let customMessage = data?.message || data?.error;
+
+      if (data?.details) {
+        if (Array.isArray(data.details)) {
+          customMessage = data.details.map((d) => d.message || d.path + ': ' + d.message || JSON.stringify(d)).join('; ');
+        } else if (typeof data.details === 'string') {
+          customMessage = data.details;
+        } else if (typeof data.details === 'object') {
+          customMessage = Object.values(data.details).flat().join('; ');
+        }
+      }
+
+      if (!customMessage) {
+        customMessage = 'An unexpected error occurred';
+      }
+
       const formattedError = new Error(customMessage);
       formattedError.status = status;
       formattedError.data = data;

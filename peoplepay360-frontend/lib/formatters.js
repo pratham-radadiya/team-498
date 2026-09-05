@@ -97,3 +97,14 @@ export function getInitials(name) {
   }
   return name.slice(0, 2).toUpperCase();
 }
+
+export function sanitizeDateInput(value) {
+  if (!value) return '';
+  const parts = String(value).split('-');
+  if (parts[0] && parts[0].length > 4) {
+    parts[0] = parts[0].slice(0, 4);
+    return parts.join('-');
+  }
+  return value;
+}
+

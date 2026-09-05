@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import apiClient from '@/lib/api-client';
 
 export function useAttendanceWidget() {
@@ -10,21 +10,29 @@ export function useAttendanceWidget() {
   const [loading, setLoading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
 
-  const hasCheckedRef = useRef(false);
+  const calcElapsed = (startTime) => {
+    if (!startTime) return 0;
+    const diffMs = Math.max(0, Date.now() - startTime);
+    return Math.floor(diffMs / 1000);
+  };
 
-  // Check active attendance session status once
-  const checkActiveSession = useCallback(async () => {
-    if (hasCheckedRef.current) return;
-    hasCheckedRef.current = true;
+  // Check active attendance session status
+  const fetchActiveSession = useCallback(async () => {
     try {
       const response = await apiClient.get('/api/attendance/current').catch(() => null);
       if (response && response.data && response.data.isOpen && response.data.attendance) {
         const sessionData = response.data.attendance;
         setIsCheckedIn(true);
         setActiveSessionId(sessionData.id);
-        const startTime = new Date(sessionData.checkIn).getTime();
+        const parsedTime = new Date(sessionData.checkIn).getTime();
+        const startTime = isNaN(parsedTime) ? Date.now() : Math.min(parsedTime, Date.now());
         setCheckInTime(startTime);
-        setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+        setElapsedSeconds(calcElapsed(startTime));
+      } else {
+        setIsCheckedIn(false);
+        setCheckInTime(null);
+        setElapsedSeconds(0);
+        setActiveSessionId(null);
       }
     } catch (err) {
       // Ignore
@@ -32,15 +40,16 @@ export function useAttendanceWidget() {
   }, []);
 
   useEffect(() => {
-    checkActiveSession();
-  }, [checkActiveSession]);
+    fetchActiveSession();
+  }, [fetchActiveSession]);
 
   // Live timer interval when checked in
   useEffect(() => {
     let interval = null;
     if (isCheckedIn && checkInTime) {
+      setElapsedSeconds(calcElapsed(checkInTime));
       interval = setInterval(() => {
-        setElapsedSeconds(Math.floor((Date.now() - checkInTime) / 1000));
+        setElapsedSeconds(calcElapsed(checkInTime));
       }, 1000);
     } else {
       setElapsedSeconds(0);
@@ -51,9 +60,10 @@ export function useAttendanceWidget() {
   }, [isCheckedIn, checkInTime]);
 
   const formatTime = (totalSec) => {
-    const hours = Math.floor(totalSec / 3600);
-    const minutes = Math.floor((totalSec % 3600) / 60);
-    const seconds = totalSec % 60;
+    const safeSec = Math.max(0, Math.floor(Number(totalSec) || 0));
+    const hours = Math.floor(safeSec / 3600);
+    const minutes = Math.floor((safeSec % 3600) / 60);
+    const seconds = safeSec % 60;
     const pad = (n) => String(n).padStart(2, '0');
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   };
@@ -74,8 +84,10 @@ export function useAttendanceWidget() {
 
         const rec = response?.data;
         setIsCheckedIn(true);
-        const startTime = rec?.checkIn ? new Date(rec.checkIn).getTime() : now;
+        const parsedStart = rec?.checkIn ? new Date(rec.checkIn).getTime() : now;
+        const startTime = isNaN(parsedStart) ? now : Math.min(parsedStart, now);
         setCheckInTime(startTime);
+        setElapsedSeconds(0);
         setActiveSessionId(rec?.id || 'active');
       }
     } catch (err) {
@@ -90,5 +102,6 @@ export function useAttendanceWidget() {
     elapsedFormatted: formatTime(elapsedSeconds),
     loading,
     toggleAttendance,
+    refetchCurrent: fetchActiveSession,
   };
 }

@@ -11,15 +11,13 @@ import { FileText, RefreshCw, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PayslipsPage() {
-  const { session } = useAuthSession();
-  const currentUserRole = session?.role || 'EMPLOYEE';
-  const currentEmployeeId = session?.employeeId || null;
+  const { role: currentUserRole, employeeId: currentEmployeeId } = useAuthSession();
 
   // EMPLOYEE role sees only their own payslips (automatically enforced by server-side API scoping too)
   const isEmployeeRole = currentUserRole === 'EMPLOYEE';
   const employeeFilter = isEmployeeRole ? currentEmployeeId : null;
 
-  const { fetchPayslipById, getPdfUrl, deletePayslip } = usePayslips();
+  const { fetchPayslipById, getPdfUrl, downloadPdf, deletePayslip } = usePayslips();
 
   const [gridRefreshTrigger, setGridRefreshTrigger] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,6 +95,7 @@ export default function PayslipsPage() {
         payslipId={selectedPayslipId}
         fetchPayslipById={fetchPayslipById}
         getPdfUrl={getPdfUrl}
+        downloadPdf={downloadPdf}
         deletePayslip={deletePayslip}
         currentUserRole={currentUserRole}
         onSuccess={handleModalSuccess}

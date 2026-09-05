@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { sanitizeDateInput } from '@/lib/formatters';
 import { X, FileText, Save, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
 
 export default function ContractFormModal({
@@ -76,7 +77,10 @@ export default function ContractFormModal({
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value, type } = e.target;
+    if (type === 'date' && value) {
+      value = sanitizeDateInput(value);
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -247,6 +251,8 @@ export default function ContractFormModal({
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleChange}
+                  min="1900-01-01"
+                  max="2099-12-31"
                   required
                   className={inputClassName}
                 />
@@ -259,6 +265,8 @@ export default function ContractFormModal({
                   name="endDate"
                   value={formData.endDate}
                   onChange={handleChange}
+                  min="1900-01-01"
+                  max="2099-12-31"
                   placeholder="Omit for ongoing"
                   className={inputClassName}
                 />

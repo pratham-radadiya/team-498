@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useSalaryStructures } from '@/hooks/useSalaryStructures';
 import { useAuthSession } from '@/hooks/useAuthSession';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, sanitizeDateInput } from '@/lib/formatters';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -79,7 +79,11 @@ export default function PayrollDashboardView() {
   }, [role, fetchStructureOptions]);
 
   const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+    let cleanVal = value;
+    if ((field === 'periodStart' || field === 'periodEnd') && value) {
+      cleanVal = sanitizeDateInput(value);
+    }
+    setFilters((prev) => ({ ...prev, [field]: cleanVal }));
   };
 
   // Donut Chart Data & Colors
@@ -175,6 +179,8 @@ export default function PayrollDashboardView() {
               type="date"
               value={filters.periodStart}
               onChange={(e) => handleFilterChange('periodStart', e.target.value)}
+              min="1900-01-01"
+              max="2099-12-31"
               className="w-full px-3.5 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
             />
           </div>
@@ -187,6 +193,8 @@ export default function PayrollDashboardView() {
               type="date"
               value={filters.periodEnd}
               onChange={(e) => handleFilterChange('periodEnd', e.target.value)}
+              min="1900-01-01"
+              max="2099-12-31"
               className="w-full px-3.5 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-600 focus:outline-none transition-all"
             />
           </div>

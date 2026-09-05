@@ -38,7 +38,8 @@ export default function PayrunDetailModal({
   const [sentSummary, setSentSummary] = useState(null);
   const [payrunData, setPayrunData] = useState(null);
 
-  const canManage = canPerformAction(currentUserRole, 'payroll', 'approve');
+  const canEdit = canPerformAction(currentUserRole, 'payruns', 'edit');
+  const canDelete = canPerformAction(currentUserRole, 'payruns', 'delete');
 
   const loadPayrunDetails = async () => {
     if (!payrunId) return;
@@ -254,7 +255,7 @@ export default function PayrunDetailModal({
           </div>
 
           {/* Delete Payrun (if not paid and permitted) */}
-          {!isPaid && canManage && (
+          {!isPaid && canDelete && (
             <button
               type="button"
               onClick={handleDelete}
@@ -329,10 +330,11 @@ export default function PayrunDetailModal({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {payrunData.payslips.map((ps) => {
+                        {payrunData.payslips.map((ps, idx) => {
                           const hasWarnings = ps.warnings && ps.warnings.length > 0;
+                          const targetId = ps.id || ps._id || ps.payslipId;
                           return (
-                            <tr key={ps.id} className="hover:bg-slate-50/80 transition-colors">
+                            <tr key={targetId || idx} className="hover:bg-slate-50/80 transition-colors">
                               <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-[10px]">
                                   <User className="w-3.5 h-3.5" />
@@ -354,9 +356,9 @@ export default function PayrunDetailModal({
                               <td className="py-3 px-4">
                                 {hasWarnings ? (
                                   <div className="flex flex-wrap gap-1">
-                                    {ps.warnings.map((w, idx) => (
+                                    {ps.warnings.map((w, wIdx) => (
                                       <span
-                                        key={idx}
+                                        key={wIdx}
                                         className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold flex items-center gap-1"
                                       >
                                         <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
@@ -371,7 +373,7 @@ export default function PayrunDetailModal({
                               <td className="py-3 px-4 text-right">
                                 <button
                                   type="button"
-                                  onClick={() => onSelectPayslip && onSelectPayslip(ps.id)}
+                                  onClick={() => onSelectPayslip && targetId && onSelectPayslip(targetId)}
                                   className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
                                   title="View Payslip Details"
                                 >

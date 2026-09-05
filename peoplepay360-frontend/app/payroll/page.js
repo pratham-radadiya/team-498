@@ -29,17 +29,21 @@ export default function PayrollDashboardPage() {
     const fetchPayrollData = async () => {
       setLoading(true);
       try {
-        const [payrunRes, structRes, payslipRes] = await Promise.all([
+        const [payrunRes, structRes, payslipRes] = await Promise.allSettled([
           apiClient.post('/api/payruns/list', { startRow: 0, endRow: 10 }),
           apiClient.post('/api/salary-structures/list', { startRow: 0, endRow: 50 }),
           apiClient.post('/api/payslips/list', { startRow: 0, endRow: 10 }),
         ]);
 
-        const payrunRows = payrunRes.data?.rows || [];
-        const payrunCount = payrunRes.data?.rowCount || payrunRows.length;
-        const structRows = structRes.data?.rows || [];
-        const payslipRows = payslipRes.data?.rows || [];
-        const payslipCount = payslipRes.data?.rowCount || payslipRows.length;
+        const payrunData = payrunRes.status === 'fulfilled' ? payrunRes.value.data : null;
+        const structData = structRes.status === 'fulfilled' ? structRes.value.data : null;
+        const payslipData = payslipRes.status === 'fulfilled' ? payslipRes.value.data : null;
+
+        const payrunRows = payrunData?.rows || [];
+        const payrunCount = payrunData?.rowCount || payrunRows.length;
+        const structRows = structData?.rows || [];
+        const payslipRows = payslipData?.rows || [];
+        const payslipCount = payslipData?.rowCount || payslipRows.length;
 
         const draft = payrunRows.filter((p) => p.status === 'Draft').length;
         const paid = payrunRows.filter((p) => p.status === 'Paid').length;

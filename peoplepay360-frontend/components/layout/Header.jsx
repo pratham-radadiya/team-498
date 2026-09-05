@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAttendanceWidget } from '@/hooks/useAttendanceWidget';
 import { useSidebar } from '@/context/SidebarContext';
-import { ROLE_LABELS } from '@/lib/rbac';
+import { ROLE_LABELS, canAccessPath } from '@/lib/rbac';
 import { getInitials } from '@/lib/formatters';
 import {
   LogIn,
@@ -47,7 +47,7 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Quick Search Dropdown Items
+  // Quick Search Dropdown Items (filtered by role permissions)
   const searchOptions = [
     { id: 'emp', title: 'Employees Directory', desc: 'Manage staff, departments & user roles', path: '/employees', icon: Users, color: 'text-indigo-600 bg-indigo-50' },
     { id: 'ctr', title: 'Employment Contracts', desc: 'View active contracts & pay structures', path: '/contracts', icon: FileText, color: 'text-blue-600 bg-blue-50' },
@@ -58,9 +58,10 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
 
   const filteredSearchOptions = searchOptions.filter(
     (opt) =>
-      !searchQuery ||
-      opt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opt.desc.toLowerCase().includes(searchQuery.toLowerCase())
+      canAccessPath(role, opt.path) &&
+      (!searchQuery ||
+        opt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        opt.desc.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleSelectOption = (path) => {

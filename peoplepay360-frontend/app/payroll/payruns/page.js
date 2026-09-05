@@ -16,9 +16,8 @@ import { CreditCard, Plus, RefreshCw, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PayrunsPage() {
-  const { session } = useAuthSession();
-  const currentUserRole = session?.role || 'EMPLOYEE';
-  const canManage = canPerformAction(currentUserRole, 'payroll', 'create');
+  const { role: currentUserRole } = useAuthSession();
+  const canManage = canPerformAction(currentUserRole, 'payruns', 'create');
 
   const {
     fetchEligibleEmployees,
@@ -31,7 +30,7 @@ export default function PayrunsPage() {
     deletePayrun,
   } = usePayruns();
 
-  const { fetchPayslipById, getPdfUrl, deletePayslip } = usePayslips();
+  const { fetchPayslipById, getPdfUrl, downloadPdf, deletePayslip } = usePayslips();
   const { fetchStructureOptions } = useSalaryStructures();
 
   const [gridRefreshTrigger, setGridRefreshTrigger] = useState(0);
@@ -175,6 +174,7 @@ export default function PayrunsPage() {
         payslipId={selectedPayslipId}
         fetchPayslipById={fetchPayslipById}
         getPdfUrl={getPdfUrl}
+        downloadPdf={downloadPdf}
         deletePayslip={deletePayslip}
         currentUserRole={currentUserRole}
         onSuccess={handlePayrunDetailSuccess}

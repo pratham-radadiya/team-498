@@ -5,7 +5,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
 import { SkeletonTable } from '@/components/ui/Skeleton';
-import { FileText, Calendar, Eye, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, Calendar, Eye, ChevronRight, ChevronLeft, User } from 'lucide-react';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -22,6 +22,20 @@ export default function ContractList({
   const columnDefs = useMemo(
     () => [
       {
+        headerName: 'Contract ID',
+        field: 'id',
+        flex: 1.5,
+        minWidth: 140,
+        cellRenderer: (params) => (
+          <div className="flex items-center gap-2 py-1 font-mono font-bold text-xs text-indigo-600">
+            <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="truncate" title={params.value || params.data?.name}>
+              {params.data?.name || params.value || '—'}
+            </span>
+          </div>
+        ),
+      },
+      {
         headerName: 'Employee',
         field: 'employeeName',
         flex: 2,
@@ -29,7 +43,7 @@ export default function ContractList({
         cellRenderer: (params) => (
           <div className="flex items-center gap-3 py-1">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              <FileText className="w-4 h-4" />
+              <User className="w-4 h-4" />
             </div>
             <div className="truncate">
               <span className="font-bold text-slate-900 hover:text-indigo-600 transition-colors block text-xs truncate">
