@@ -1,0 +1,388 @@
+// Prisma schema — PeoplePay360 backend
+// Connection/URL config lives in prisma.config.mjs (Prisma 7 convention), not here.
+
+// Deliberately using the legacy "prisma-client-js" generator, not Prisma 7's new
+// default "prisma-client": the new generator can only emit TypeScript source
+// (.ts, with real generic syntax) regardless of moduleFormat, which conflicts
+// with this project's JS-only requirement. prisma-client-js emits plain JS
+// into node_modules/@prisma/client, importable the classic way, no driver
+// adapter required.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  EMPLOYEE
+  HR_MANAGER
+  HR_PAYROLL_USER
+  HR_PAYROLL_MANAGER
+  ADMIN
+}
+
+enum EmployeeStatus {
+  Active
+  Inactive
+}
+
+// Employee IS the login account — there is no separate User model. Every
+// Employee row that should be able to sign in carries its own credentials
+// and role directly (see server/lib/auth.js, which authenticates against
+// this model). This was a deliberate merge decision, replacing an earlier
+// separate-but-linked User/Employee design.
+model Employee {
+  id     String         @id @default(cuid())
+  name   String
+  email  String         @unique
+  status EmployeeStatus @default(Active)
+
+  passwordHash String
+  role         Role
+
+  department String?
+  jobPosition String?
+  workLocation String?
+  company     String?
+  // Phase 6: needed for the Payrun "missing bank details" warning check.
+  bankAccount String?
+
+  // Phase 2: now a real FK — WorkingSchedule exists.
+  workingScheduleId String?
+  workingSchedule   WorkingSchedule? @relation(fields: [workingScheduleId], references: [id])
+
+  managerId String?
+  manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports   Employee[] @relation("EmployeeManager")
+
+  contracts        Contract[]
+  attendances      Attendance[]
+  allocations      Allocation[]
+  timeOffRequests  TimeOffRequest[]
+  payslips         Payslip[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum WeekDay {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum WorkingScheduleStatus {
+  Active
+  Inactive
+}
+
+model WorkingSchedule {
+  id               String                @id @default(cuid())
+  name             String
+  calendarType     String?
+  company          String?
+  status           WorkingScheduleStatus @default(Active)
+  // Server-computed from `days` on every create/update — never accepted from the client.
+  totalWeeklyHours Float                 @default(0)
+
+  days      WorkingScheduleDay[]
+  employees Employee[]
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkingScheduleDay {
+  id                String          @id @default(cuid())
+  workingScheduleId String
+  workingSchedule   WorkingSchedule @relation(fields: [workingScheduleId], references: [id], onDelete: Cascade)
+  day               WeekDay
+  startTime         String // "HH:mm"
+  endTime           String // "HH:mm"
+  breakMinutes      Int             @default(0)
+  // Server-computed: (endTime - startTime) - breakMinutes, in hours.
+  hours             Float
+}
+
+enum ContractStatus {
+  Running
+  Expired
+}
+
+model Contract {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  department  String?
+  jobPosition String?
+  startDate   DateTime
+  endDate     DateTime?
+  wage        Float
+
+  workingScheduleId String?
+  workingSchedule   WorkingSchedule? @relation(fields: [workingScheduleId], references: [id])
+
+  salaryStructureId String?
+  salaryStructure   SalaryStructure? @relation(fields: [salaryStructureId], references: [id])
+
+  status ContractStatus @default(Running)
+  notes  String?
+
+  payslips Payslip[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AttendanceStatus {
+  Present
+  Absent
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  checkIn  DateTime
+  checkOut DateTime?
+
+  // Both server-computed at check-out (or recomputed on correction) — never
+  // accepted from the client.
+  workedHours Float?
+  overtime    Float?
+
+  status AttendanceStatus @default(Present)
+  notes  String?
+
+  // userId of whoever last made a manual correction via PATCH; null for a
+  // record that only ever went through the normal check-in/check-out flow.
+  correctedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// Phase 4 — Time Off (Types, Allocations, Requests)
+// ============================================================
+
+enum TimeOffUnit {
+  Days
+  Hours
+}
+
+enum ApprovalRole {
+  Manager
+  Officer
+}
+
+enum TimeOffTypeStatus {
+  Active
+  Inactive
+}
+
+model TimeOffType {
+  id                String            @id @default(cuid())
+  name              String
+  unit              TimeOffUnit       @default(Days)
+  requiresAllocation Boolean          @default(true)
+  approvalRole      ApprovalRole      @default(Manager)
+  // Free-text payroll-integration hook, e.g. "Leave Work Entry" — exact
+  // payroll wiring is out of scope until Phase 6 needs it.
+  payrollWorkEntry  String?
+  color             String?
+  status            TimeOffTypeStatus @default(Active)
+
+  allocations Allocation[]
+  requests    TimeOffRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AllocationStatus {
+  Pending
+  Approved
+  Refused
+}
+
+model Allocation {
+  id         String @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  typeId     String
+  type       TimeOffType @relation(fields: [typeId], references: [id])
+
+  allocated Float
+  // Server-maintained: incremented when a Request against this Allocation is
+  // approved, decremented if that approval is ever reversed. Never client-set.
+  taken     Float @default(0)
+
+  status      AllocationStatus @default(Pending)
+  approverId  String?
+  description String?
+  validFrom   DateTime?
+  validTo     DateTime?
+
+  requests TimeOffRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TimeOffRequestStatus {
+  Pending
+  Approved
+  Refused
+}
+
+model TimeOffRequest {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  typeId     String
+  type       TimeOffType @relation(fields: [typeId], references: [id])
+
+  startDate DateTime
+  endDate   DateTime
+  // Server-computed from startDate/endDate + the type's unit — never client-set.
+  duration  Float
+
+  allocationId String?
+  allocation   Allocation? @relation(fields: [allocationId], references: [id])
+
+  reason     String?
+  status     TimeOffRequestStatus @default(Pending)
+  approverId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// Phase 5 — Salary Structure & Salary Rules
+// ============================================================
+
+model SalaryStructure {
+  id     String  @id @default(cuid())
+  name   String
+  active Boolean @default(true)
+
+  rules     SalaryRule[]
+  contracts Contract[]
+  payruns   Payrun[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SalaryRuleCategory {
+  Basic
+  Allowance
+  Gross
+  Deduction
+  Net
+}
+
+enum SalaryComputationMethod {
+  Fixed
+  Percentage
+  Formula
+}
+
+enum PercentageBase {
+  ContractWage
+  Basic
+  Gross
+}
+
+model SalaryRule {
+  id                String                  @id @default(cuid())
+  structureId       String
+  structure         SalaryStructure         @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  name              String
+  code              String
+  category          SalaryRuleCategory
+  sequence          Int
+  computationMethod SalaryComputationMethod
+
+  fixedAmount     Float?
+  percentageBase  PercentageBase?
+  percentageValue Float?
+  formula         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([structureId, code])
+}
+
+// ============================================================
+// Phase 6 — Payroll: Payrun, Payslip, PDF, Email
+// ============================================================
+
+enum PayrunStatus {
+  Draft
+  Validated
+  Paid
+}
+
+model Payrun {
+  id          String       @id @default(cuid())
+  name        String
+  structureId String
+  structure   SalaryStructure @relation(fields: [structureId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  status      PayrunStatus @default(Draft)
+
+  payslips Payslip[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payslip {
+  id         String   @id @default(cuid())
+  payrunId   String
+  payrun     Payrun   @relation(fields: [payrunId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  // Snapshot of the contract used for computation — resolved at compute time,
+  // null on a freshly-created (not yet computed) Payslip.
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id])
+
+  status     PayrunStatus @default(Draft)
+  workedDays Float?
+  basic      Float?
+  gross      Float?
+  net        Float?
+  // Rule-by-rule breakdown snapshot: [{ code, category, sequence, amount }, ...].
+  // A computed-at-a-point-in-time snapshot, not independently queried — a
+  // JSON column is the right fit rather than a separate relational model.
+  lines      Json?
+
+  warnings PayslipWarning[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PayslipWarning {
+  id        String  @id @default(cuid())
+  payslipId String
+  payslip   Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  type      String // e.g. "missing_bank", "duplicate"
+  message   String
+}
