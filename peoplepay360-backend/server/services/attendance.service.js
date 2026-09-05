@@ -84,7 +84,12 @@ export async function getAttendance(id, session) {
   if (session.role === ROLES.EMPLOYEE && attendance.employeeId !== session.employeeId) {
     throw new ForbiddenError('You may only view your own attendance records')
   }
-  return attendance
+  const { employee, ...rest } = attendance
+  return {
+    ...rest,
+    employee,
+    employeeName: employee?.name ?? null,
+  }
 }
 
 // Manual correction (HR Manager and above only, enforced at the route). If

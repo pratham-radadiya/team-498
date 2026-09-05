@@ -29,10 +29,14 @@ export async function deleteSalaryRule(id) {
   return salaryRuleRepo.deleteSalaryRule(id)
 }
 
-// Always sorted by sequence by default (grid contract's own sortModel can
-// still override it if the client explicitly asks for a different order).
 export async function listSalaryRulesGrid(gridRequest) {
   const { skip, take, orderBy, where } = buildPrismaGridQuery(gridRequest, FILTER_FIELD_MAP)
   const [rows, rowCount] = await salaryRuleRepo.listSalaryRulesForGrid({ skip, take, orderBy, where })
-  return { rows, rowCount }
+  return {
+    rows: rows.map(({ structure, ...rest }) => ({
+      ...rest,
+      structureName: structure?.name ?? null,
+    })),
+    rowCount,
+  }
 }

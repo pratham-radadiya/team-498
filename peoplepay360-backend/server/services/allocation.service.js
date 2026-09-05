@@ -63,9 +63,13 @@ export async function listAllocationsGrid(gridRequest, session) {
     orderBy,
     where: effectiveWhere,
   })
-  return { rows: rows.map(({ employee, type, ...rest }) => ({
-    ...withRemaining(rest),
-    employeeName: employee?.name ?? null,
-    typeName: type?.name ?? null,
-  })), rowCount }
+  return {
+    rows: rows.map(({ employee, type, ...rest }) => ({
+      ...withRemaining(rest),
+      employeeName: employee?.name ?? null,
+      typeName: type?.name ?? null,
+      typeUnit: type?.unit ?? 'Days',
+    })),
+    rowCount,
+  }
 }

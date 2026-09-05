@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { canPerformAction } from '@/lib/rbac';
 import { formatDateTime, formatWorkedHours } from '@/lib/formatters';
-import { X, Clock, Save, Trash2, AlertCircle, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { X, Clock, Save, Trash2, AlertCircle, ChevronDown, CheckCircle2, User } from 'lucide-react';
 
 export default function AttendanceFormModal({
   isOpen,
@@ -27,7 +27,8 @@ export default function AttendanceFormModal({
     notes: '',
   });
 
-  const canEdit = canPerformAction(currentUserRole, 'attendance', 'update');
+  const canEdit = canPerformAction(currentUserRole, 'attendance', 'edit');
+  const canDelete = canPerformAction(currentUserRole, 'attendance', 'delete');
 
   useEffect(() => {
     if (isOpen && recordId) {
@@ -96,6 +97,9 @@ export default function AttendanceFormModal({
   const selectClassName =
     'w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-300 rounded-2xl text-slate-900 text-sm font-semibold appearance-none cursor-pointer pr-10 focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/15 shadow-sm transition-all block outline-none';
 
+  const displayedEmployeeName =
+    recordData?.employeeName || recordData?.employee?.name || recordData?.employeeId || 'Employee';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-md animate-fade-in">
       <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden my-auto max-h-[90vh]">
@@ -107,7 +111,7 @@ export default function AttendanceFormModal({
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900">
-                Attendance Record Details
+                Attendance — {displayedEmployeeName}
               </h2>
               <p className="text-sm text-slate-500 mt-0.5">
                 {canEdit ? 'Perform manual correction on check-in/out timestamps' : 'View session log details'}
@@ -135,6 +139,25 @@ export default function AttendanceFormModal({
             <div className="py-16 text-center text-slate-500 text-sm font-medium">Loading attendance details...</div>
           ) : (
             <>
+              {/* Employee Information Card */}
+              <div className="p-4 rounded-2xl bg-indigo-50/70 border-2 border-indigo-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block">Employee</span>
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      {displayedEmployeeName}
+                    </h3>
+                  </div>
+                </div>
+                {recordData?.employee?.email && (
+                  <span className="text-xs font-mono text-slate-500 hidden sm:inline">
+                    {recordData.employee.email}
+                  </span>
+                )}
+              </div>
               {/* Server Calculated Summary Cards */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center">
@@ -213,7 +236,7 @@ export default function AttendanceFormModal({
         {/* Footer */}
         <div className="px-8 py-5 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between">
           <div>
-            {canEdit && (
+            {canDelete && (
               <button
                 type="button"
                 onClick={handleDelete}

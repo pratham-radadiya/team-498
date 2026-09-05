@@ -27,7 +27,16 @@ export function findApprovedAllocations(employeeId, typeId) {
 
 export function listAllocationsForGrid({ skip, take, orderBy, where }) {
   return Promise.all([
-    prisma.allocation.findMany({ skip, take, orderBy, where, include: { employee: { select: { name: true } }, type: { select: { name: true } } } }),
+    prisma.allocation.findMany({
+      skip,
+      take,
+      orderBy: orderBy || { createdAt: 'desc' },
+      where,
+      include: {
+        employee: { select: { name: true } },
+        type: { select: { name: true, unit: true } },
+      },
+    }),
     prisma.allocation.count({ where }),
   ])
 }

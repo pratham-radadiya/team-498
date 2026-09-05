@@ -9,7 +9,7 @@ import { useAllocations } from '@/hooks/useAllocations';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { canPerformAction } from '@/lib/rbac';
 import apiClient from '@/lib/api-client';
-import { Award, Plus, RefreshCw, Layers } from 'lucide-react';
+import { Award, Plus, RefreshCw, Layers, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AllocationsPage() {
@@ -17,10 +17,15 @@ export default function AllocationsPage() {
   const canGrant = canPerformAction(currentUserRole, 'timeOffAllocations', 'create');
 
   const {
+    allocations,
+    totalCount,
+    loading,
+    fetchAllocations,
     fetchAllocationById,
     createAllocation,
     updateAllocation,
     approveAllocation,
+    refuseAllocation,
     deleteAllocation,
   } = useAllocations();
 
@@ -28,8 +33,18 @@ export default function AllocationsPage() {
   const [selectedAllocationId, setSelectedAllocationId] = useState(null);
   const [gridRefreshTrigger, setGridRefreshTrigger] = useState(0);
 
+  // Pagination & Filter states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [employeeOptions, setEmployeeOptions] = useState([]);
   const [typeOptions, setTypeOptions] = useState([]);
+
+  useEffect(() => {
+    const startRow = (page - 1) * pageSize;
+    fetchAllocations({ startRow, endRow: page * pageSize });
+  }, [page, pageSize, gridRefreshTrigger, fetchAllocations]);
 
   useEffect(() => {
     // Fetch employee and time off policy types for modal pickers
@@ -78,6 +93,35 @@ export default function AllocationsPage() {
     setGridRefreshTrigger((prev) => prev + 1);
   };
 
+  const handleApproveAllocation = async (id) => {
+    try {
+      await approveAllocation(id);
+      setGridRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || 'Failed to approve allocation.');
+    }
+  };
+
+  const handleRefuseAllocation = async (id) => {
+    try {
+      await refuseAllocation(id);
+      setGridRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || 'Failed to reject allocation.');
+    }
+  };
+
+  const filteredAllocations = allocations.filter((alloc) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      !searchQuery ||
+      alloc.employeeName?.toLowerCase().includes(query) ||
+      alloc.employeeId?.toLowerCase().includes(query) ||
+      alloc.typeName?.toLowerCase().includes(query) ||
+      alloc.status?.toLowerCase().includes(query)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 antialiased">
       <Sidebar />
@@ -114,7 +158,7 @@ export default function AllocationsPage() {
                 className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-2xl transition-all shadow-xs"
                 title="Refresh Table"
               >
-                <RefreshCw className="w-5 h-5" />
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
 
               {canGrant && (
@@ -129,11 +173,42 @@ export default function AllocationsPage() {
             </div>
           </div>
 
+          {/* Search Toolbar */}
+          <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative w-full sm:w-80 md:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-indigo-600">
+                <Search className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by employee, policy type..."
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-2xl text-slate-900 text-sm font-medium placeholder-slate-400 focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/15 transition-all outline-none"
+              />
+            </div>
+
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3.5 py-2.5 rounded-2xl">
+              Showing <span className="text-indigo-600 font-extrabold">{filteredAllocations.length}</span> of {totalCount || filteredAllocations.length} records
+            </span>
+          </div>
+
           {/* Allocation List Table View */}
           <AllocationList
-            refreshTrigger={gridRefreshTrigger}
-            onSelectAllocation={handleSelectAllocation}
-            approveAllocation={approveAllocation}
+            allocations={filteredAllocations}
+            loading={loading}
+            totalCount={totalCount}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+            onAllocationClick={handleSelectAllocation}
+            onApproveAllocation={handleApproveAllocation}
+            onRefuseAllocation={handleRefuseAllocation}
+            canApprove={canGrant}
           />
         </div>
       </main>

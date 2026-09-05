@@ -1,27 +1,23 @@
 'use client';
 
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { useSalaryRulesGrid } from '@/hooks/useSalaryRulesGrid';
-import { FileCode, Eye, Layers, Hash } from 'lucide-react';
+import { SkeletonTable } from '@/components/ui/Skeleton';
+import { FileCode, Eye, Layers, Hash, ChevronRight, ChevronLeft } from 'lucide-react';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export default function SalaryRuleList({
-  refreshTrigger = 0,
+  rules = [],
+  loading = false,
+  totalCount = 0,
+  page = 1,
+  pageSize = 10,
+  onPageChange,
+  onPageSizeChange,
   onSelectRule,
-  structureIdFilter = null,
 }) {
-  const gridRef = useRef(null);
-  const { datasource } = useSalaryRulesGrid(structureIdFilter);
-
-  useEffect(() => {
-    if (gridRef.current && gridRef.current.api) {
-      gridRef.current.api.refreshInfiniteCache();
-    }
-  }, [refreshTrigger, structureIdFilter]);
-
   const columnDefs = useMemo(
     () => [
       {
@@ -95,7 +91,7 @@ export default function SalaryRuleList({
       {
         headerName: 'Action',
         field: 'id',
-        width: 95,
+        width: 80,
         pinned: 'right',
         sortable: false,
         filter: false,
@@ -103,11 +99,11 @@ export default function SalaryRuleList({
           <div className="flex justify-center items-center h-full py-1">
             <button
               onClick={() => onSelectRule && onSelectRule(params.value)}
-              className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
+              className="p-1.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
               title="View Rule Details"
+              aria-label="View Rule Details"
             >
-              <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
-              <span className="text-[11px]">View</span>
+              <Eye className="w-4 h-4" />
             </button>
           </div>
         ),
@@ -125,24 +121,68 @@ export default function SalaryRuleList({
     []
   );
 
+  if (loading && rules.length === 0) {
+    return <SkeletonTable />;
+  }
+
+  const totalPages = Math.ceil((totalCount || rules.length) / pageSize) || 1;
+
   return (
-    <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in">
-      <div className="w-full text-xs" style={{ height: '480px' }}>
+    <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in flex flex-col">
+      <div className="w-full text-xs" style={{ height: '420px' }}>
         <AgGridReact
-          ref={gridRef}
-          rowModelType="infinite"
-          datasource={datasource}
+          rowData={rules}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          cacheBlockSize={20}
-          maxBlocksInCache={10}
-          infiniteInitialRowCount={50}
           onRowClicked={(e) => onSelectRule && onSelectRule(e.data?.id)}
           rowHeight={48}
           headerHeight={40}
           rowSelection="single"
           overlayNoRowsTemplate="<span class='text-xs text-slate-500 font-medium'>No salary rules found</span>"
         />
+      </div>
+
+      {/* Pagination Bar */}
+      <div className="px-4 py-3 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+        <div className="flex items-center gap-2">
+          <span>Rows per page:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange && onPageSizeChange(Number(e.target.value))}
+            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 font-semibold"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
+          <span>
+            Page <strong className="font-semibold text-slate-900">{page}</strong> of{' '}
+            <strong className="font-semibold text-slate-900">{totalPages}</strong> ({totalCount || rules.length} items)
+          </span>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onPageChange && onPageChange(page - 1)}
+              disabled={page <= 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              aria-label="Previous Page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onPageChange && onPageChange(page + 1)}
+              disabled={page >= totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              aria-label="Next Page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -5,7 +5,10 @@ export function createAttendance(data) {
 }
 
 export function findAttendanceById(id) {
-  return prisma.attendance.findUnique({ where: { id } })
+  return prisma.attendance.findUnique({
+    where: { id },
+    include: { employee: { select: { id: true, name: true, email: true, department: true } } },
+  })
 }
 
 export function findOpenAttendance(employeeId) {

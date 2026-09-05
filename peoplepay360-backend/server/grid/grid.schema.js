@@ -12,8 +12,8 @@ const filterModelEntry = z.object({
 })
 
 export const gridRequestSchema = z.object({
-  startRow: z.number().int().min(0),
-  endRow: z.number().int().min(0),
+  startRow: z.number().int().min(0).default(0),
+  endRow: z.number().int().min(0).default(50),
   sortModel: z.array(sortModelEntry).default([]),
   filterModel: z.record(z.string(), filterModelEntry).default({}),
 })

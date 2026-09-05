@@ -1,31 +1,27 @@
 'use client';
 
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { useTimeOffRequestsGrid } from '@/hooks/useTimeOffRequestsGrid';
 import { getStatusBadgeClass, formatDate } from '@/lib/formatters';
-import { User, Tag, CheckCircle2, XCircle, Eye, ChevronRight, Calendar } from 'lucide-react';
+import { SkeletonTable } from '@/components/ui/Skeleton';
+import { User, Tag, CheckCircle2, XCircle, Eye, ChevronRight, ChevronLeft, Calendar } from 'lucide-react';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export default function RequestList({
-  refreshTrigger = 0,
+  requests = [],
+  loading = false,
+  totalCount = 0,
+  page = 1,
+  pageSize = 10,
+  onPageChange,
+  onPageSizeChange,
   onSelectRequest,
   onApproveRequest,
   onRefuseRequest,
   canApprove = false,
-  employeeIdFilter = null,
 }) {
-  const gridRef = useRef(null);
-  const { datasource } = useTimeOffRequestsGrid(employeeIdFilter);
-
-  useEffect(() => {
-    if (gridRef.current && gridRef.current.api) {
-      gridRef.current.api.refreshInfiniteCache();
-    }
-  }, [refreshTrigger, employeeIdFilter]);
-
   const columnDefs = useMemo(
     () => [
       {
@@ -104,14 +100,15 @@ export default function RequestList({
       {
         headerName: 'Actions',
         field: 'id',
-        width: 180,
+        width: 130,
+        minWidth: 120,
         pinned: 'right',
         sortable: false,
         filter: false,
         cellRenderer: (params) => {
           const isPending = (params.data?.status || 'To Approve') === 'To Approve' || params.data?.status === 'Pending';
           return (
-            <div className="flex items-center justify-end gap-1.5 py-1">
+            <div className="flex items-center justify-end gap-1.5 h-full py-1 pr-2">
               {isPending && canApprove && (
                 <>
                   <button
@@ -120,11 +117,11 @@ export default function RequestList({
                       e.stopPropagation();
                       onApproveRequest && onApproveRequest(params.value);
                     }}
-                    className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                    title="Approve request"
+                    className="p-1.5 rounded-xl text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-all cursor-pointer shrink-0"
+                    title="Approve"
+                    aria-label="Approve"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Approve</span>
+                    <CheckCircle2 className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
@@ -132,22 +129,22 @@ export default function RequestList({
                       e.stopPropagation();
                       onRefuseRequest && onRefuseRequest(params.value);
                     }}
-                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                    title="Refuse request"
+                    className="p-1.5 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50 transition-all cursor-pointer shrink-0"
+                    title="Reject"
+                    aria-label="Reject"
                   >
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>Refuse</span>
+                    <XCircle className="w-4 h-4" />
                   </button>
                 </>
               )}
               <button
                 type="button"
                 onClick={() => onSelectRequest && onSelectRequest(params.value)}
-                className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer ml-1"
-                title="View Request Details"
+                className="p-1.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer shrink-0"
+                title="View Details"
+                aria-label="View Details"
               >
-                <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
-                <span className="text-[11px]">View</span>
+                <Eye className="w-4 h-4" />
               </button>
             </div>
           );
@@ -166,24 +163,68 @@ export default function RequestList({
     []
   );
 
+  if (loading && requests.length === 0) {
+    return <SkeletonTable />;
+  }
+
+  const totalPages = Math.ceil((totalCount || requests.length) / pageSize) || 1;
+
   return (
-    <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in">
-      <div className="w-full text-xs" style={{ height: '480px' }}>
+    <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in flex flex-col">
+      <div className="w-full text-xs" style={{ height: '420px' }}>
         <AgGridReact
-          ref={gridRef}
-          rowModelType="infinite"
-          datasource={datasource}
+          rowData={requests}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          cacheBlockSize={20}
-          maxBlocksInCache={10}
-          infiniteInitialRowCount={50}
           onRowClicked={(e) => onSelectRequest && onSelectRequest(e.data?.id)}
           rowHeight={48}
           headerHeight={40}
           rowSelection="single"
           overlayNoRowsTemplate="<span class='text-xs text-slate-500 font-medium'>No time off requests found</span>"
         />
+      </div>
+
+      {/* Pagination Bar */}
+      <div className="px-4 py-3 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+        <div className="flex items-center gap-2">
+          <span>Rows per page:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange && onPageSizeChange(Number(e.target.value))}
+            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 font-semibold"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
+          <span>
+            Page <strong className="font-semibold text-slate-900">{page}</strong> of{' '}
+            <strong className="font-semibold text-slate-900">{totalPages}</strong> ({totalCount || requests.length} items)
+          </span>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onPageChange && onPageChange(page - 1)}
+              disabled={page <= 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              aria-label="Previous Page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onPageChange && onPageChange(page + 1)}
+              disabled={page >= totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              aria-label="Next Page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

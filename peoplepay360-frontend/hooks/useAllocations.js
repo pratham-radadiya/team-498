@@ -68,6 +68,16 @@ export function useAllocations() {
     }
   }, []);
 
+  const refuseAllocation = useCallback(async (id) => {
+    try {
+      const response = await apiClient.patch(`/api/timeoff/allocations/${id}`, { status: 'Refused' });
+      return response.data;
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Failed to refuse allocation';
+      throw new Error(msg);
+    }
+  }, []);
+
   const deleteAllocation = useCallback(async (id) => {
     try {
       await apiClient.delete(`/api/timeoff/allocations/${id}`);
@@ -87,6 +97,7 @@ export function useAllocations() {
     createAllocation,
     updateAllocation,
     approveAllocation,
+    refuseAllocation,
     deleteAllocation,
   };
 }

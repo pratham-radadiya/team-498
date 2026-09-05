@@ -16,10 +16,15 @@ export function deleteSalaryRule(id) {
   return prisma.salaryRule.delete({ where: { id } })
 }
 
-// Always sorted by sequence — rule order is the whole point of this list.
 export function listSalaryRulesForGrid({ skip, take, orderBy, where }) {
   return Promise.all([
-    prisma.salaryRule.findMany({ skip, take, orderBy: orderBy ?? { sequence: 'asc' }, where }),
+    prisma.salaryRule.findMany({
+      skip,
+      take,
+      orderBy: orderBy ?? { sequence: 'asc' },
+      where,
+      include: { structure: { select: { name: true } } },
+    }),
     prisma.salaryRule.count({ where }),
   ])
 }

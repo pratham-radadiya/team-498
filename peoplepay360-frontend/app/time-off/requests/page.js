@@ -9,7 +9,7 @@ import { useTimeOffRequests } from '@/hooks/useTimeOffRequests';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { canPerformAction } from '@/lib/rbac';
 import apiClient from '@/lib/api-client';
-import { Calendar, Plus, RefreshCw, Award, Layers } from 'lucide-react';
+import { Calendar, Plus, RefreshCw, Award, Layers, Search, Filter } from 'lucide-react';
 import Link from 'next/link';
 
 export default function TimeOffRequestsPage() {
@@ -17,6 +17,10 @@ export default function TimeOffRequestsPage() {
   const canApprove = canPerformAction(currentUserRole, 'timeOffRequests', 'approve');
 
   const {
+    requests,
+    totalCount,
+    loading,
+    fetchRequests,
     fetchRequestById,
     createRequest,
     approveRequest,
@@ -28,8 +32,19 @@ export default function TimeOffRequestsPage() {
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [gridRefreshTrigger, setGridRefreshTrigger] = useState(0);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
   const [employeeOptions, setEmployeeOptions] = useState([]);
   const [typeOptions, setTypeOptions] = useState([]);
+
+  useEffect(() => {
+    const startRow = (page - 1) * pageSize;
+    fetchRequests({ startRow, endRow: page * pageSize });
+  }, [page, pageSize, gridRefreshTrigger, fetchRequests]);
 
   useEffect(() => {
     // Fetch dropdown choices
@@ -96,6 +111,20 @@ export default function TimeOffRequestsPage() {
     }
   };
 
+  const filteredRequests = requests.filter((req) => {
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      !searchQuery ||
+      req.employeeName?.toLowerCase().includes(query) ||
+      req.employeeId?.toLowerCase().includes(query) ||
+      req.typeName?.toLowerCase().includes(query) ||
+      req.status?.toLowerCase().includes(query);
+
+    const matchesStatus = !statusFilter || req.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 antialiased">
       <Sidebar />
@@ -140,7 +169,7 @@ export default function TimeOffRequestsPage() {
                 className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-2xl transition-all shadow-xs"
                 title="Refresh Table"
               >
-                <RefreshCw className="w-5 h-5" />
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
 
               <button
@@ -153,9 +182,55 @@ export default function TimeOffRequestsPage() {
             </div>
           </div>
 
+          {/* Search & Filter Toolbar */}
+          <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative w-full sm:w-80 md:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-indigo-600">
+                <Search className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by employee, policy type..."
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-2xl text-slate-900 text-sm font-medium placeholder-slate-400 focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/15 transition-all outline-none"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="flex items-center gap-2 bg-slate-50 border-2 border-slate-300 rounded-2xl px-3.5 py-2">
+                <Filter className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="text-xs font-bold text-slate-700">Status:</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="To Approve">To Approve</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Refused">Refused</option>
+                </select>
+              </div>
+
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3.5 py-2.5 rounded-2xl">
+                Showing <span className="text-indigo-600 font-extrabold">{filteredRequests.length}</span> of {totalCount || filteredRequests.length} records
+              </span>
+            </div>
+          </div>
+
           {/* Request List Table */}
           <RequestList
-            refreshTrigger={gridRefreshTrigger}
+            requests={filteredRequests}
+            loading={loading}
+            totalCount={totalCount}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
             onSelectRequest={handleSelectRequest}
             onApproveRequest={handleApproveRequest}
             onRefuseRequest={handleRefuseRequest}

@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!sessionLoading && session?.user) {
+    if (!sessionLoading && session?.user && session?.user?.employeeId) {
       router.push('/employees');
     }
   }, [session, sessionLoading, router]);

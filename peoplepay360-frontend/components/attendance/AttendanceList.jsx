@@ -128,7 +128,7 @@ export default function AttendanceList({
       {
         headerName: 'Action',
         field: 'id',
-        width: 95,
+        width: 80,
         pinned: 'right',
         sortable: false,
         filter: false,
@@ -136,11 +136,11 @@ export default function AttendanceList({
           <div className="flex justify-center items-center h-full py-1">
             <button
               onClick={() => onRecordClick && onRecordClick(params.value)}
-              className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-600 hover:text-white border border-slate-200 hover:border-indigo-600 shadow-2xs transition-all duration-200 cursor-pointer"
+              className="p-1.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
               title="View Attendance Details"
+              aria-label="View Attendance Details"
             >
-              <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
-              <span className="text-[11px]">View</span>
+              <Eye className="w-4 h-4" />
             </button>
           </div>
         ),

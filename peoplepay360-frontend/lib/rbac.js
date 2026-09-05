@@ -124,7 +124,9 @@ export function canPerformAction(role, moduleName, action = 'view') {
   if (!role) return false;
   const normalizedRole = String(role).toUpperCase();
   const modulePermissions = PERMISSION_MATRIX[moduleName];
-  if (!modulePermissions || !modulePermissions[action]) return false;
-  return modulePermissions[action].includes(normalizedRole);
+  if (!modulePermissions) return false;
+  const normalizedAction = action === 'update' ? 'edit' : action;
+  if (!modulePermissions[normalizedAction]) return false;
+  return modulePermissions[normalizedAction].includes(normalizedRole);
 }
 

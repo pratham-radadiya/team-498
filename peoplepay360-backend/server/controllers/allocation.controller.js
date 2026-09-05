@@ -26,7 +26,7 @@ export async function deleteAllocationController(id) {
 }
 
 export async function listAllocationsController(request, session) {
-  const body = await request.json()
+  const body = await request.json().catch(() => ({}))
   const gridRequest = allocationListRequestSchema.parse(body)
   const result = await allocationService.listAllocationsGrid(gridRequest, session)
   return Response.json(result)

@@ -45,8 +45,20 @@ export const authOptions = {
       return token
     },
     async session({ session, token }) {
-      session.user.employeeId = token.employeeId
-      session.user.role = token.role
+      if (!token?.employeeId) {
+        return { ...session, user: null }
+      }
+      const employee = await prisma.employee.findUnique({
+        where: { id: token.employeeId },
+        select: { id: true, name: true, email: true, role: true, status: true },
+      })
+      if (!employee || employee.status !== 'Active') {
+        return { ...session, user: null }
+      }
+      session.user.employeeId = employee.id
+      session.user.role = employee.role
+      session.user.name = employee.name
+      session.user.email = employee.email
       return session
     },
   },

@@ -17,9 +17,22 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response;
 
-      // 401 Unauthorized -> Force redirect to login
+      // 401 Unauthorized -> Clear session and redirect to login
       if (status === 401 && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
+        apiClient.get('/api/auth/csrf').then((res) => {
+          const csrf = res.data?.csrfToken;
+          if (csrf) {
+            apiClient.post('/api/auth/signout', new URLSearchParams({ csrfToken: csrf, json: 'true' }), {
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            }).finally(() => {
+              window.location.href = '/login';
+            });
+          } else {
+            window.location.href = '/login';
+          }
+        }).catch(() => {
+          window.location.href = '/login';
+        });
       }
 
       // Format custom error message from backend
