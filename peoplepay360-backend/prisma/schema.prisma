@@ -1,0 +1,70 @@
+// Prisma schema — PeoplePay360 backend
+// Connection/URL config lives in prisma.config.mjs (Prisma 7 convention), not here.
+
+// Deliberately using the legacy "prisma-client-js" generator, not Prisma 7's new
+// default "prisma-client": the new generator can only emit TypeScript source
+// (.ts, with real generic syntax) regardless of moduleFormat, which conflicts
+// with this project's JS-only requirement. prisma-client-js emits plain JS
+// into node_modules/@prisma/client, importable the classic way, no driver
+// adapter required.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  EMPLOYEE
+  HR_MANAGER
+  HR_PAYROLL_USER
+  HR_PAYROLL_MANAGER
+  ADMIN
+}
+
+enum UserStatus {
+  Active
+  Inactive
+}
+
+enum EmployeeStatus {
+  Active
+  Inactive
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  role         Role
+  status       UserStatus @default(Active)
+  employeeId   String?    @unique
+  employee     Employee?  @relation(fields: [employeeId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Employee {
+  id     String         @id @default(cuid())
+  name   String
+  email  String         @unique
+  status EmployeeStatus @default(Active)
+
+  department String?
+  jobPosition String?
+  workLocation String?
+  company     String?
+
+  // Real FK once WorkingSchedule exists (Phase 2); placeholder id for now.
+  workingScheduleId String?
+
+  managerId String?
+  manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports   Employee[] @relation("EmployeeManager")
+
+  user User?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
