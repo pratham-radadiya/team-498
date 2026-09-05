@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import apiClient from '@/lib/api-client';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import PayrollDashboardView from '@/components/payroll/PayrollDashboardView';
 import { CreditCard, Layers, FileCode, FileText, ArrowRight, Plus, AlertCircle, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
@@ -79,9 +80,9 @@ export default function PayrollDashboardPage() {
                   <CreditCard className="w-6 h-6" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">Payroll & Payslips</h1>
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">Payroll & Analytics Dashboard</h1>
                   <p className="text-slate-500 text-sm mt-0.5">
-                    Manage salary structures, computation rules, payrun batches, and employee payslips
+                    Manage salary structures, computation rules, payruns, payslips, and cross-functional analytics
                   </p>
                 </div>
               </div>
@@ -99,6 +100,9 @@ export default function PayrollDashboardPage() {
               )}
             </div>
           </div>
+
+          {/* Cross-Functional Analytics Dashboard Component */}
+          <PayrollDashboardView />
 
           {/* Quick Metrics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
