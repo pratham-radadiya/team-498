@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import RequestList from '@/components/time-off/RequestList';
@@ -13,6 +14,7 @@ import { Calendar, Plus, RefreshCw, Award, Layers, Search, Filter } from 'lucide
 import Link from 'next/link';
 
 export default function TimeOffRequestsPage() {
+  const router = useRouter();
   const { role: currentUserRole } = useAuthSession();
   const canApprove = canPerformAction(currentUserRole, 'timeOffRequests', 'approve');
 
@@ -85,8 +87,7 @@ export default function TimeOffRequestsPage() {
   };
 
   const handleSelectRequest = (id) => {
-    setSelectedRequestId(id);
-    setIsModalOpen(true);
+    router.push(`/time-off/requests/${id}`);
   };
 
   const handleModalSuccess = () => {

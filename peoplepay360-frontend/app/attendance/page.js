@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useAttendanceWidget } from '@/hooks/useAttendanceWidget';
@@ -12,6 +13,7 @@ import AttendanceFormModal from '@/components/attendance/AttendanceFormModal';
 import { Clock, LogIn, LogOut, Search, RefreshCw, Loader2, User } from 'lucide-react';
 
 export default function AttendancePage() {
+  const router = useRouter();
   const { role } = useAuthSession();
   const {
     records,
@@ -185,10 +187,7 @@ export default function AttendancePage() {
               setPageSize(s);
               setPage(1);
             }}
-            onRecordClick={(id) => {
-              setSelectedRecordId(id);
-              setModalOpen(true);
-            }}
+            onRecordClick={(id) => router.push(`/attendance/${id}`)}
           />
         </main>
       </div>

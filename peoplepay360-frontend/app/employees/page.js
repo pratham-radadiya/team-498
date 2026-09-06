@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useEmployees } from '@/hooks/useEmployees';
 import { ROLES, ROLE_LABELS, canPerformAction } from '@/lib/rbac';
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const { role, employeeId: currentUserId } = useAuthSession();
   const {
     employees,
@@ -85,8 +87,7 @@ export default function EmployeesPage() {
   };
 
   const handleOpenEdit = (id) => {
-    setSelectedEmployeeId(id);
-    setModalOpen(true);
+    router.push(`/employees/${id}`);
   };
 
   const handleSuccessRefetch = () => {

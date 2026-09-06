@@ -1,72 +1,74 @@
 'use client';
 
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { usePayslipsGrid } from '@/hooks/usePayslipsGrid';
 import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
-import { User, Eye, Calendar, FileText, Printer, Download } from 'lucide-react';
+import { SkeletonTable } from '@/components/ui/Skeleton';
+import { User, Eye, Calendar, FileText, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export default function PayslipList({
-  refreshTrigger = 0,
+  payslips = [],
+  loading = false,
+  totalCount = 0,
+  page = 1,
+  pageSize = 10,
+  onPageChange,
+  onPageSizeChange,
   onSelectPayslip,
   onDownloadPdf,
-  employeeIdFilter = null,
-  payrunIdFilter = null,
 }) {
-  const gridRef = useRef(null);
-  const { datasource } = usePayslipsGrid(employeeIdFilter, payrunIdFilter);
-
-  useEffect(() => {
-    if (gridRef.current && gridRef.current.api) {
-      gridRef.current.api.refreshInfiniteCache();
-    }
-  }, [refreshTrigger, employeeIdFilter, payrunIdFilter]);
-
   const columnDefs = useMemo(
     () => [
       {
         headerName: 'Employee',
         field: 'employeeName',
         flex: 2,
-        minWidth: 170,
-        cellRenderer: (params) => (
-          <div className="flex items-center gap-3 py-1">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              <User className="w-4 h-4" />
+        minWidth: 180,
+        cellRenderer: (params) => {
+          const empName = params.value || params.data?.employee?.name || params.data?.employeeId || 'Employee';
+          return (
+            <div className="flex items-center gap-3 py-1">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="truncate">
+                <span className="font-bold text-slate-900 hover:text-indigo-600 transition-colors block text-xs truncate">
+                  {empName}
+                </span>
+                <span className="text-[10px] text-slate-500 block leading-none">
+                  {params.data?.contract?.contractReference || params.data?.contractReference || 'Contract'}
+                </span>
+              </div>
             </div>
-            <div className="truncate">
-              <span className="font-bold text-slate-900 hover:text-indigo-600 transition-colors block text-xs truncate">
-                {params.value || params.data?.employeeId || 'Employee'}
-              </span>
-              <span className="text-[10px] text-slate-500 block leading-none">
-                ID: {params.data?.employeeId}
-              </span>
-            </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         headerName: 'Pay Period',
         field: 'periodStart',
         flex: 2,
-        minWidth: 180,
-        cellRenderer: (params) => (
-          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium py-1">
-            <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span>
-              {formatDate(params.data?.periodStart)} → {formatDate(params.data?.periodEnd)}
-            </span>
-          </div>
-        ),
+        minWidth: 190,
+        cellRenderer: (params) => {
+          const start = params.data?.startDate || params.data?.periodStart || params.value;
+          const end = params.data?.endDate || params.data?.periodEnd;
+          return (
+            <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium py-1">
+              <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>
+                {formatDate(start)} → {formatDate(end)}
+              </span>
+            </div>
+          );
+        },
       },
       {
         headerName: 'Worked Days',
         field: 'workedDays',
         flex: 1,
-        minWidth: 100,
+        minWidth: 110,
         cellRenderer: (params) => (
           <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 font-mono text-xs font-bold">
             {params.value !== undefined && params.value !== null ? `${params.value} days` : '—'}
@@ -75,36 +77,45 @@ export default function PayslipList({
       },
       {
         headerName: 'Basic Salary',
-        field: 'basic',
+        field: 'basicWage',
         flex: 1.3,
         minWidth: 120,
-        cellRenderer: (params) => (
-          <span className="font-mono text-xs font-bold text-slate-900">
-            {params.value !== null && params.value !== undefined ? formatCurrency(params.value) : '—'}
-          </span>
-        ),
+        cellRenderer: (params) => {
+          const val = params.value !== undefined && params.value !== null ? params.value : params.data?.basic;
+          return (
+            <span className="font-mono text-xs font-bold text-slate-900">
+              {val !== null && val !== undefined ? formatCurrency(val) : '—'}
+            </span>
+          );
+        },
       },
       {
         headerName: 'Gross Salary',
-        field: 'gross',
+        field: 'grossPay',
         flex: 1.3,
         minWidth: 120,
-        cellRenderer: (params) => (
-          <span className="font-mono text-xs font-bold text-slate-900">
-            {params.value !== null && params.value !== undefined ? formatCurrency(params.value) : '—'}
-          </span>
-        ),
+        cellRenderer: (params) => {
+          const val = params.value !== undefined && params.value !== null ? params.value : params.data?.gross;
+          return (
+            <span className="font-mono text-xs font-bold text-slate-900">
+              {val !== null && val !== undefined ? formatCurrency(val) : '—'}
+            </span>
+          );
+        },
       },
       {
         headerName: 'Net Salary',
-        field: 'net',
+        field: 'netPay',
         flex: 1.5,
         minWidth: 130,
-        cellRenderer: (params) => (
-          <span className="font-mono text-xs font-black text-emerald-700">
-            {params.value !== null && params.value !== undefined ? formatCurrency(params.value) : '—'}
-          </span>
-        ),
+        cellRenderer: (params) => {
+          const val = params.value !== undefined && params.value !== null ? params.value : params.data?.net;
+          return (
+            <span className="font-mono text-xs font-black text-emerald-700">
+              {val !== null && val !== undefined ? formatCurrency(val) : '—'}
+            </span>
+          );
+        },
       },
       {
         headerName: 'Status',
@@ -113,7 +124,7 @@ export default function PayslipList({
         minWidth: 110,
         cellRenderer: (params) => (
           <div className="py-1">
-            <span className={`badge ${getStatusBadgeClass(params.value)}`}>
+            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getStatusBadgeClass(params.value)}`}>
               {params.value || 'Draft'}
             </span>
           </div>
@@ -122,7 +133,7 @@ export default function PayslipList({
       {
         headerName: 'Actions',
         field: 'id',
-        width: 100,
+        width: 110,
         pinned: 'right',
         sortable: false,
         filter: false,
@@ -153,7 +164,7 @@ export default function PayslipList({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDownloadPdf(targetId, params.data.employeeName);
+                    onDownloadPdf(targetId, params.data.employeeName || params.data.employee?.name);
                   }}
                   className="p-1.5 rounded-xl text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 transition-all cursor-pointer"
                   title="Download PDF Payslip"
@@ -179,18 +190,19 @@ export default function PayslipList({
     []
   );
 
+  if (loading && payslips.length === 0) {
+    return <SkeletonTable />;
+  }
+
+  const totalPages = Math.ceil((totalCount || payslips.length) / pageSize) || 1;
+
   return (
-    <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in">
-      <div className="w-full text-xs" style={{ height: '480px' }}>
+    <div className="card-flat overflow-hidden bg-white border border-slate-200 shadow-xs animate-fade-in flex flex-col rounded-3xl">
+      <div className="w-full text-xs" style={{ height: '440px' }}>
         <AgGridReact
-          ref={gridRef}
-          rowModelType="infinite"
-          datasource={datasource}
+          rowData={payslips}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          cacheBlockSize={20}
-          maxBlocksInCache={10}
-          infiniteInitialRowCount={50}
           onRowClicked={(e) => {
             const targetId = e.data?.id || e.data?._id || e.data?.payslipId;
             if (onSelectPayslip && targetId && targetId !== 'undefined') {
@@ -202,6 +214,49 @@ export default function PayslipList({
           rowSelection="single"
           overlayNoRowsTemplate="<span class='text-xs text-slate-500 font-medium'>No payslips found</span>"
         />
+      </div>
+
+      {/* Pagination Bar */}
+      <div className="px-4 py-3 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+        <div className="flex items-center gap-2">
+          <span>Rows per page:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange && onPageSizeChange(Number(e.target.value))}
+            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 font-semibold"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
+          <span>
+            Page <strong className="font-semibold text-slate-900">{page}</strong> of{' '}
+            <strong className="font-semibold text-slate-900">{totalPages}</strong> ({totalCount || payslips.length} items)
+          </span>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onPageChange && onPageChange(page - 1)}
+              disabled={page <= 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Previous Page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onPageChange && onPageChange(page + 1)}
+              disabled={page >= totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Next Page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

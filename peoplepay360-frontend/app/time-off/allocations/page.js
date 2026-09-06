@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import AllocationList from '@/components/time-off/AllocationList';
@@ -13,6 +14,7 @@ import { Award, Plus, RefreshCw, Layers, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AllocationsPage() {
+  const router = useRouter();
   const { role: currentUserRole } = useAuthSession();
   const canGrant = canPerformAction(currentUserRole, 'timeOffAllocations', 'create');
 
@@ -85,8 +87,7 @@ export default function AllocationsPage() {
   };
 
   const handleSelectAllocation = (id) => {
-    setSelectedAllocationId(id);
-    setIsModalOpen(true);
+    router.push(`/time-off/allocations/${id}`);
   };
 
   const handleModalSuccess = () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useTimeOffTypes } from '@/hooks/useTimeOffTypes';
 import { canPerformAction } from '@/lib/rbac';
@@ -11,6 +12,7 @@ import TimeOffTypeFormModal from '@/components/time-off/TimeOffTypeFormModal';
 import { Tag, Plus, Search, RefreshCw } from 'lucide-react';
 
 export default function TimeOffTypesPage() {
+  const router = useRouter();
   const { role } = useAuthSession();
   const {
     types,
@@ -123,10 +125,7 @@ export default function TimeOffTypesPage() {
               setPageSize(s);
               setPage(1);
             }}
-            onTypeClick={(id) => {
-              setSelectedTypeId(id);
-              setModalOpen(true);
-            }}
+            onTypeClick={(id) => router.push(`/time-off/types/${id}`)}
           />
         </main>
       </div>

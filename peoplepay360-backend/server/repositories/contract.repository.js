@@ -5,7 +5,34 @@ export function createContract(data) {
 }
 
 export function findContractById(id) {
-  return prisma.contract.findUnique({ where: { id } })
+  return prisma.contract.findUnique({
+    where: { id },
+    include: {
+      employee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          department: true,
+          jobPosition: true,
+        },
+      },
+      salaryStructure: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+        },
+      },
+      workingSchedule: {
+        select: {
+          id: true,
+          name: true,
+          averageHoursPerDay: true,
+        },
+      },
+    },
+  })
 }
 
 export function updateContract(id, data) {

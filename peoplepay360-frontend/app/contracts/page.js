@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useContracts } from '@/hooks/useContracts';
 import { useSchedules } from '@/hooks/useSchedules';
@@ -16,6 +17,7 @@ import WorkingScheduleFormModal from '@/components/schedules/WorkingScheduleForm
 import { FileText, Clock, Plus, Search, RefreshCw, Calendar } from 'lucide-react';
 
 export default function ContractsPage() {
+  const router = useRouter();
   const { role } = useAuthSession();
   const {
     contracts,
@@ -229,10 +231,7 @@ export default function ContractsPage() {
                 setContractPageSize(s);
                 setContractPage(1);
               }}
-              onContractClick={(id) => {
-                setSelectedContractId(id);
-                setContractModalOpen(true);
-              }}
+              onContractClick={(id) => router.push(`/contracts/${id}`)}
             />
           ) : (
             <WorkingScheduleList
@@ -246,10 +245,7 @@ export default function ContractsPage() {
                 setSchedulePageSize(s);
                 setSchedulePage(1);
               }}
-              onScheduleClick={(id) => {
-                setSelectedScheduleId(id);
-                setScheduleModalOpen(true);
-              }}
+              onScheduleClick={(id) => router.push(`/contracts/schedules/${id}`)}
             />
           )}
         </main>

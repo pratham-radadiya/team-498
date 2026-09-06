@@ -1,55 +1,59 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import PayrunList from '@/components/payroll/PayrunList';
 import PayrunWizardModal from '@/components/payroll/PayrunWizardModal';
-import PayrunDetailModal from '@/components/payroll/PayrunDetailModal';
-import PayslipDetailModal from '@/components/payroll/PayslipDetailModal';
 import { usePayruns } from '@/hooks/usePayruns';
-import { usePayslips } from '@/hooks/usePayslips';
 import { useSalaryStructures } from '@/hooks/useSalaryStructures';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { canPerformAction } from '@/lib/rbac';
-import { CreditCard, Plus, RefreshCw, FileText } from 'lucide-react';
+import { CreditCard, Plus, RefreshCw, FileText, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PayrunsPage() {
+  const router = useRouter();
   const { role: currentUserRole } = useAuthSession();
   const canManage = canPerformAction(currentUserRole, 'payruns', 'create');
 
   const {
+    payruns,
+    totalCount,
+    loading,
+    fetchPayruns,
     fetchEligibleEmployees,
-    fetchPayrunById,
     createPayrun,
-    computePayrun,
-    validatePayrun,
-    markPaid,
-    sendPayslips,
-    deletePayrun,
   } = usePayruns();
 
-  const { fetchPayslipById, getPdfUrl, downloadPdf, deletePayslip } = usePayslips();
   const { fetchStructureOptions } = useSalaryStructures();
 
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
   const [gridRefreshTrigger, setGridRefreshTrigger] = useState(0);
 
-  // Modals state
+  // Wizard modal state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [isPayrunDetailOpen, setIsPayrunDetailOpen] = useState(false);
-  const [selectedPayrunId, setSelectedPayrunId] = useState(null);
-
-  const [isPayslipDetailOpen, setIsPayslipDetailOpen] = useState(false);
-  const [selectedPayslipId, setSelectedPayslipId] = useState(null);
-
   const [structureOptions, setStructureOptions] = useState([]);
+
+  const loadPayruns = useCallback(() => {
+    const startRow = (page - 1) * pageSize;
+    const endRow = page * pageSize;
+    fetchPayruns({ startRow, endRow });
+  }, [page, pageSize, fetchPayruns]);
+
+  useEffect(() => {
+    loadPayruns();
+  }, [loadPayruns, gridRefreshTrigger]);
 
   useEffect(() => {
     const loadOptions = async () => {
       try {
         const opts = await fetchStructureOptions();
-        setStructureOptions(opts);
+        setStructureOptions(opts || []);
       } catch (err) {
         console.error('Failed to load structure options for payruns page:', err);
       }
@@ -63,29 +67,39 @@ export default function PayrunsPage() {
   };
 
   const handleSelectPayrun = (id) => {
-    setSelectedPayrunId(id);
-    setIsPayrunDetailOpen(true);
-  };
-
-  const handleSelectPayslipFromPayrun = (id) => {
-    setSelectedPayslipId(id);
-    setIsPayslipDetailOpen(true);
+    router.push(`/payroll/payruns/${id}`);
   };
 
   const handleWizardSuccess = (newId) => {
     setGridRefreshTrigger((prev) => prev + 1);
-    setSelectedPayrunId(newId);
-    setIsPayrunDetailOpen(true);
+    setIsWizardOpen(false);
+    if (newId) {
+      router.push(`/payroll/payruns/${newId}`);
+    }
   };
 
-  const handlePayrunDetailSuccess = () => {
+  const handleRefetch = () => {
     setGridRefreshTrigger((prev) => prev + 1);
   };
 
+  const filteredPayruns = payruns.filter((run) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const name = run.name || '';
+    const status = run.status || '';
+    return name.toLowerCase().includes(q) || status.toLowerCase().includes(q);
+  });
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 antialiased">
-      <Sidebar />
-      <Header title="Payruns Batch Processing" />
+      <Sidebar
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+      />
+      <Header
+        title="Payruns Batch Processing"
+        onMobileToggle={() => setMobileSidebarOpen(true)}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 lg:pl-64 pt-24 px-4 sm:px-6 pb-8 transition-all duration-300">
@@ -114,73 +128,70 @@ export default function PayrunsPage() {
               </Link>
 
               <button
-                onClick={() => setGridRefreshTrigger((prev) => prev + 1)}
-                className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-2xl transition-all shadow-xs"
+                onClick={handleRefetch}
+                className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-2xl transition-all shadow-xs cursor-pointer"
                 title="Refresh Table"
               >
-                <RefreshCw className="w-5 h-5" />
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
 
               {canManage && (
                 <button
                   onClick={handleOpenWizard}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-sm shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold shadow-sm shadow-indigo-200 transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-5 h-5" />
-                  <span>Create Payrun</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Generate Payrun</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Payruns AG Grid Table */}
+          {/* Search and Filters Bar */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative w-full sm:w-80 md:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search payrun batches..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-medium placeholder-slate-400 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
+              />
+            </div>
+
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl">
+              Showing <span className="text-indigo-600 font-extrabold">{filteredPayruns.length}</span> of {totalCount || filteredPayruns.length} payruns
+            </span>
+          </div>
+
+          {/* Payruns AG Grid Table with Pagination */}
           <PayrunList
-            refreshTrigger={gridRefreshTrigger}
+            payruns={filteredPayruns}
+            loading={loading}
+            totalCount={totalCount}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
             onSelectPayrun={handleSelectPayrun}
           />
         </div>
       </main>
 
-      {/* Payrun Creation Wizard Modal */}
+      {/* Payrun Generation Wizard Modal */}
       <PayrunWizardModal
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
-        fetchEligibleEmployees={fetchEligibleEmployees}
         createPayrun={createPayrun}
+        fetchEligibleEmployees={fetchEligibleEmployees}
         structureOptions={structureOptions}
         onSuccess={handleWizardSuccess}
-      />
-
-      {/* Payrun Detail Modal */}
-      <PayrunDetailModal
-        isOpen={isPayrunDetailOpen}
-        onClose={() => setIsPayrunDetailOpen(false)}
-        payrunId={selectedPayrunId}
-        fetchPayrunById={fetchPayrunById}
-        computePayrun={computePayrun}
-        validatePayrun={validatePayrun}
-        markPaid={markPaid}
-        sendPayslips={sendPayslips}
-        deletePayrun={deletePayrun}
-        currentUserRole={currentUserRole}
-        onSelectPayslip={handleSelectPayslipFromPayrun}
-        onSuccess={handlePayrunDetailSuccess}
-      />
-
-      {/* Payslip Detail Modal */}
-      <PayslipDetailModal
-        isOpen={isPayslipDetailOpen}
-        onClose={() => {
-          setIsPayslipDetailOpen(false);
-          setSelectedPayslipId(null);
-        }}
-        payslipId={selectedPayslipId}
-        fetchPayslipById={fetchPayslipById}
-        getPdfUrl={getPdfUrl}
-        downloadPdf={downloadPdf}
-        deletePayslip={deletePayslip}
-        currentUserRole={currentUserRole}
-        onSuccess={handlePayrunDetailSuccess}
       />
     </div>
   );

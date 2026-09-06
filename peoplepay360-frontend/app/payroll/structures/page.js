@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import SalaryStructureList from '@/components/payroll/SalaryStructureList';
@@ -14,6 +15,7 @@ import { Layers, Plus, RefreshCw, FileCode } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SalaryStructuresPage() {
+  const router = useRouter();
   const { role: currentUserRole } = useAuthSession();
   const canManage = canPerformAction(currentUserRole, 'salaryStructures', 'create');
 
@@ -62,8 +64,7 @@ export default function SalaryStructuresPage() {
   };
 
   const handleSelectStructure = (id) => {
-    setSelectedStructureId(id);
-    setIsStructModalOpen(true);
+    router.push(`/payroll/structures/${id}`);
   };
 
   const handleOpenAddRuleModal = (structId) => {
