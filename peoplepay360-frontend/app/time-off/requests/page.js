@@ -52,20 +52,33 @@ export default function TimeOffRequestsPage() {
     // Fetch dropdown choices
     const loadDropdownData = async () => {
       try {
-        const [empRes, typeRes] = await Promise.all([
-          apiClient.post('/api/employees/list', { startRow: 0, endRow: 200 }),
+        const [empRes, typeRes] = await Promise.allSettled([
+          apiClient.get('/api/employees/options'),
           apiClient.get('/api/timeoff/types/options'),
         ]);
 
-        const empRows = empRes.data?.rows || [];
+        let empList = [];
+        if (empRes.status === 'fulfilled' && empRes.value.data) {
+          empList = Array.isArray(empRes.value.data) ? empRes.value.data : empRes.value.data.rows || [];
+        } else {
+          const fallbackEmp = await apiClient.post('/api/employees/list', { startRow: 0, endRow: 200 });
+          empList = fallbackEmp.data?.rows || [];
+        }
+
         setEmployeeOptions(
-          empRows.map((e) => ({
+          empList.map((e) => ({
             id: e.id,
-            label: `${e.name || (e.firstName ? `${e.firstName} ${e.lastName}` : e.id)}`,
+            label: e.label || e.name || (e.firstName ? `${e.firstName} ${e.lastName}` : e.id),
           }))
         );
 
-        const typeList = typeRes.data || [];
+        const typeList =
+          typeRes.status === 'fulfilled' && typeRes.value.data
+            ? Array.isArray(typeRes.value.data)
+              ? typeRes.value.data
+              : typeRes.value.data.rows || []
+            : [];
+
         setTypeOptions(
           typeList.map((t) => ({
             id: t.id,
@@ -80,6 +93,7 @@ export default function TimeOffRequestsPage() {
 
     loadDropdownData();
   }, []);
+
 
   const handleOpenCreateModal = () => {
     setSelectedRequestId(null);

@@ -447,7 +447,7 @@ export default function ContractDetailView({ id }) {
                         <option value="">-- Select Working Schedule --</option>
                         {(scheduleOptions || []).map((sc) => (
                           <option key={sc.id} value={sc.id}>
-                            {sc.name} ({sc.averageHoursPerDay}h/day)
+                            {sc.name}{sc.totalWeeklyHours ? ` (${sc.totalWeeklyHours}h/wk)` : (sc.averageHoursPerDay ? ` (${sc.averageHoursPerDay}h/day)` : '')}
                           </option>
                         ))}
                       </select>

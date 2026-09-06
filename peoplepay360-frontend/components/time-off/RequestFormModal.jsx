@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { canPerformAction } from '@/lib/rbac';
 import { formatDate, sanitizeDateInput } from '@/lib/formatters';
+import apiClient from '@/lib/api-client';
 import { X, Calendar, Save, Trash2, AlertCircle, ChevronDown, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 export default function RequestFormModal({
@@ -24,6 +25,9 @@ export default function RequestFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const [localEmployeeOptions, setLocalEmployeeOptions] = useState(employeeOptions);
+  const [localTypeOptions, setLocalTypeOptions] = useState(typeOptions);
+
   const canApprove = canPerformAction(currentUserRole, 'timeOff', 'approve');
 
   const [formData, setFormData] = useState({
@@ -34,6 +38,40 @@ export default function RequestFormModal({
     reason: '',
     status: 'To Approve',
   });
+
+  // Sync options from props or fetch if missing
+  useEffect(() => {
+    if (employeeOptions.length > 0) {
+      setLocalEmployeeOptions(employeeOptions);
+    }
+    if (typeOptions.length > 0) {
+      setLocalTypeOptions(typeOptions);
+    }
+  }, [employeeOptions, typeOptions]);
+
+  useEffect(() => {
+    if (isOpen && (localEmployeeOptions.length === 0 || localTypeOptions.length === 0)) {
+      const loadFallbacks = async () => {
+        try {
+          if (localEmployeeOptions.length === 0) {
+            const empRes = await apiClient.get('/api/employees/options').catch(() => null);
+            if (empRes?.data && Array.isArray(empRes.data)) {
+              setLocalEmployeeOptions(empRes.data.map(e => ({ id: e.id, label: e.label || e.name || e.id })));
+            }
+          }
+          if (localTypeOptions.length === 0) {
+            const typeRes = await apiClient.get('/api/timeoff/types/options').catch(() => null);
+            if (typeRes?.data && Array.isArray(typeRes.data)) {
+              setLocalTypeOptions(typeRes.data.map(t => ({ id: t.id, name: t.label || t.name || t.id, unit: t.unit || 'Days' })));
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching fallback options in RequestFormModal:', err);
+        }
+      };
+      loadFallbacks();
+    }
+  }, [isOpen, localEmployeeOptions.length, localTypeOptions.length]);
 
   useEffect(() => {
     if (isOpen && requestId) {
@@ -54,17 +92,17 @@ export default function RequestFormModal({
         .finally(() => setLoading(false));
     } else if (isOpen && isCreate) {
       const today = new Date().toISOString().split('T')[0];
-      setFormData({
-        employeeId: employeeOptions.length > 0 ? employeeOptions[0].id : '',
-        typeId: typeOptions.length > 0 ? typeOptions[0].id : '',
-        startDate: today,
-        endDate: today,
-        reason: '',
+      setFormData((prev) => ({
+        employeeId: prev.employeeId || (localEmployeeOptions.length > 0 ? localEmployeeOptions[0].id : ''),
+        typeId: prev.typeId || (localTypeOptions.length > 0 ? localTypeOptions[0].id : ''),
+        startDate: prev.startDate || today,
+        endDate: prev.endDate || today,
+        reason: prev.reason || '',
         status: 'To Approve',
-      });
+      }));
       setError('');
     }
-  }, [isOpen, requestId, isCreate, fetchRequestById, employeeOptions, typeOptions]);
+  }, [isOpen, requestId, isCreate, fetchRequestById, localEmployeeOptions, localTypeOptions]);
 
   const durationDays = useMemo(() => {
     if (!formData.startDate || !formData.endDate) return 0;
@@ -92,14 +130,17 @@ export default function RequestFormModal({
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setError('');
 
-    if (!formData.employeeId) {
+    const targetEmpId = formData.employeeId || (localEmployeeOptions.length > 0 ? localEmployeeOptions[0].id : '');
+    const targetTypeId = formData.typeId || (localTypeOptions.length > 0 ? localTypeOptions[0].id : '');
+
+    if (!targetEmpId) {
       setError('Employee selection is required.');
       return;
     }
-    if (!formData.typeId) {
+    if (!targetTypeId) {
       setError('Time Off Policy Type is required.');
       return;
     }
@@ -115,8 +156,8 @@ export default function RequestFormModal({
     setSubmitting(true);
     try {
       const payload = {
-        employeeId: formData.employeeId,
-        typeId: formData.typeId,
+        employeeId: targetEmpId,
+        typeId: targetTypeId,
         startDate: formData.startDate,
         endDate: formData.endDate,
         reason: formData.reason?.trim() || null,
@@ -126,14 +167,15 @@ export default function RequestFormModal({
         await createRequest(payload);
       }
 
-      onSuccess();
-      onClose();
+      if (onSuccess) onSuccess();
+      if (onClose) onClose();
     } catch (err) {
       setError(err.message || 'Failed to submit time off request.');
     } finally {
       setSubmitting(false);
     }
   };
+
 
   const handleApprove = async () => {
     try {
@@ -238,9 +280,9 @@ export default function RequestFormModal({
                     className={`${selectClassName} ${!isCreate ? 'disabled:opacity-60 disabled:cursor-not-allowed' : ''}`}
                   >
                     <option value="">Select Employee</option>
-                    {employeeOptions.map((opt) => (
+                    {localEmployeeOptions.map((opt) => (
                       <option key={opt.id} value={opt.id}>
-                        {opt.label} ({opt.id})
+                        {opt.label || opt.name || opt.id}
                       </option>
                     ))}
                   </select>
@@ -263,9 +305,9 @@ export default function RequestFormModal({
                     className={`${selectClassName} ${!isCreate ? 'disabled:opacity-60 disabled:cursor-not-allowed' : ''}`}
                   >
                     <option value="">Select Policy Type</option>
-                    {typeOptions.map((opt) => (
+                    {localTypeOptions.map((opt) => (
                       <option key={opt.id} value={opt.id}>
-                        {opt.name} ({opt.unit})
+                        {opt.name || opt.label || opt.id} {opt.unit ? `(${opt.unit})` : ''}
                       </option>
                     ))}
                   </select>

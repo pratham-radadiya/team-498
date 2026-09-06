@@ -470,7 +470,7 @@ export default function EmployeeDetailView({ id }) {
                               <option value="">-- Standard Schedule --</option>
                               {(options?.schedules || []).map((s) => (
                                 <option key={s.id} value={s.id}>
-                                  {s.name} ({s.averageHoursPerDay}h/day)
+                                  {s.name}{s.totalWeeklyHours ? ` (${s.totalWeeklyHours}h/wk)` : (s.averageHoursPerDay ? ` (${s.averageHoursPerDay}h/day)` : '')}
                                 </option>
                               ))}
                             </select>

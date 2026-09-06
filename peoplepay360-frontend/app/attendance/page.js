@@ -4,13 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useAttendance } from '@/hooks/useAttendance';
-import { useAttendanceWidget } from '@/hooks/useAttendanceWidget';
 import { useEmployees } from '@/hooks/useEmployees';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import AttendanceList from '@/components/attendance/AttendanceList';
 import AttendanceFormModal from '@/components/attendance/AttendanceFormModal';
-import { Clock, LogIn, LogOut, Search, RefreshCw, Loader2, User } from 'lucide-react';
+import { Clock, Search, RefreshCw, User } from 'lucide-react';
 
 export default function AttendancePage() {
   const router = useRouter();
@@ -24,9 +23,6 @@ export default function AttendancePage() {
     correctAttendance,
     deleteAttendance,
   } = useAttendance();
-
-  const { isCheckedIn, elapsedFormatted, loading: widgetLoading, toggleAttendance, refetchCurrent } =
-    useAttendanceWidget();
 
   const { options: employeeOptions, fetchOptions: fetchEmployeeOptions } = useEmployees();
 
@@ -55,7 +51,6 @@ export default function AttendancePage() {
 
   const handleRefetch = () => {
     fetchAttendanceList({ startRow: (page - 1) * pageSize, endRow: page * pageSize });
-    refetchCurrent();
   };
 
   useEffect(() => {
@@ -105,44 +100,12 @@ export default function AttendancePage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleRefetch}
-                className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-all shadow-xs"
+                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-all shadow-xs flex items-center gap-1.5 text-xs font-bold cursor-pointer"
                 title="Refresh records"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
               </button>
-
-              {/* Quick Check-In / Check-Out Primary Card */}
-              {isCheckedIn ? (
-                <button
-                  onClick={toggleAttendance}
-                  disabled={widgetLoading}
-                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md shadow-red-600/20 flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {widgetLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <LogOut className="w-4 h-4" />
-                      <span>Check Out ({elapsedFormatted})</span>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={toggleAttendance}
-                  disabled={widgetLoading}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {widgetLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <LogIn className="w-4 h-4" />
-                      <span>Check In Now</span>
-                    </>
-                  )}
-                </button>
-              )}
             </div>
           </div>
 

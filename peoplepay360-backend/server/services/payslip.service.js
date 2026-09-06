@@ -19,13 +19,28 @@ export async function getPayslip(id, session) {
   if (session.role === ROLES.EMPLOYEE && payslip.employeeId !== session.employeeId) {
     throw new ForbiddenError('You may only view your own payslips')
   }
-  const { employee, payrun, ...rest } = payslip
+  const { employee, payrun, contract, ...rest } = payslip
+  const startDate = payrun?.periodStart ?? null
+  const endDate = payrun?.periodEnd ?? null
+  const contractRef = contract?.id ? `CON-${contract.id.slice(0, 6).toUpperCase()}` : (payslip.contractId ? `CON-${payslip.contractId.slice(0, 6).toUpperCase()}` : null)
   return {
     ...rest,
     employee,
     payrun,
+    contract,
     employeeName: employee?.name ?? null,
+    employeeEmail: employee?.email ?? null,
     payrunStatus: payrun?.status ?? null,
+    payrunName: payrun?.name ?? null,
+    startDate,
+    endDate,
+    periodStart: startDate,
+    periodEnd: endDate,
+    contractReference: contractRef,
+    basicWage: rest.basic ?? contract?.wage ?? 0,
+    grossPay: rest.gross ?? rest.basic ?? contract?.wage ?? 0,
+    netPay: rest.net ?? rest.basic ?? contract?.wage ?? 0,
+    totalDeductions: Math.max(0, (rest.gross ?? rest.basic ?? contract?.wage ?? 0) - (rest.net ?? rest.basic ?? contract?.wage ?? 0)),
   }
 }
 
@@ -56,6 +71,29 @@ export async function listPayslipsGrid(gridRequest, session) {
     session.role === ROLES.EMPLOYEE ? { ...where, employeeId: session.employeeId } : where
 
   const [rows, rowCount] = await payslipRepo.listPayslipsForGrid({ skip, take, orderBy, where: effectiveWhere })
-  const shaped = rows.map(({ employee, ...rest }) => ({ ...rest, employeeName: employee?.name ?? null }))
+  const shaped = rows.map(({ employee, payrun, contract, ...rest }) => {
+    const startDate = payrun?.periodStart ?? null
+    const endDate = payrun?.periodEnd ?? null
+    const contractRef = contract?.id ? `CON-${contract.id.slice(0, 6).toUpperCase()}` : (rest.contractId ? `CON-${rest.contractId.slice(0, 6).toUpperCase()}` : null)
+    return {
+      ...rest,
+      employee,
+      payrun,
+      contract,
+      employeeName: employee?.name ?? null,
+      employeeEmail: employee?.email ?? null,
+      payrunName: payrun?.name ?? null,
+      payrunStatus: payrun?.status ?? null,
+      startDate,
+      endDate,
+      periodStart: startDate,
+      periodEnd: endDate,
+      contractReference: contractRef,
+      basicWage: rest.basic ?? contract?.wage ?? 0,
+      grossPay: rest.gross ?? rest.basic ?? contract?.wage ?? 0,
+      netPay: rest.net ?? rest.basic ?? contract?.wage ?? 0,
+      totalDeductions: Math.max(0, (rest.gross ?? rest.basic ?? contract?.wage ?? 0) - (rest.net ?? rest.basic ?? contract?.wage ?? 0)),
+    }
+  })
   return { rows: shaped, rowCount }
 }

@@ -116,7 +116,11 @@ export default function PayslipDetailView({ id }) {
               { label: employeeName }
             ]}
             title={`Salary Slip: ${employeeName}`}
-            subtitle={payslipData?.startDate ? `Pay Period: ${formatDate(payslipData.startDate)} - ${formatDate(payslipData.endDate)}` : 'Payslip Breakdown'}
+            subtitle={
+              (payslipData?.startDate || payslipData?.periodStart || payslipData?.payrun?.periodStart)
+                ? `Pay Period: ${formatDate(payslipData.startDate || payslipData.periodStart || payslipData.payrun?.periodStart)} - ${formatDate(payslipData.endDate || payslipData.periodEnd || payslipData.payrun?.periodEnd)}`
+                : 'Payslip Breakdown'
+            }
             icon={<FileText className="w-5 h-5" />}
             badge={
               <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${getStatusBadgeClass(payslipData?.status)}`}>
@@ -171,15 +175,32 @@ export default function PayslipDetailView({ id }) {
             <div className="space-y-4">
               {/* Employee & Summary Card */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
                       <User className="w-6 h-6" />
                     </div>
-                    <div>
-                      <h2 className="text-base font-bold text-slate-900">{employeeName}</h2>
-                      <p className="text-xs text-slate-500">{payslipData?.employeeEmail || 'Employee'}</p>
-                      <p className="text-xs font-mono text-indigo-600 font-semibold mt-0.5">Contract: {contractRef}</p>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold text-slate-900 truncate">{employeeName}</h2>
+                      <p className="text-xs text-slate-500 truncate">{payslipData?.employeeEmail || 'Employee'}</p>
+                      <p className="text-xs font-mono text-indigo-600 font-semibold mt-0.5 truncate">Contract: {contractRef}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col justify-center">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Pay Period</span>
+                    </div>
+                    <div className="text-sm font-bold text-slate-900 font-mono mt-1">
+                      {payslipData?.startDate || payslipData?.periodStart || payslipData?.payrun?.periodStart ? (
+                        `${formatDate(payslipData.startDate || payslipData.periodStart || payslipData.payrun?.periodStart)} - ${formatDate(payslipData.endDate || payslipData.periodEnd || payslipData.payrun?.periodEnd)}`
+                      ) : (
+                        '—'
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5 truncate">
+                      {payslipData?.payrunName || payslipData?.payrun?.name || 'Standard Payrun'}
                     </div>
                   </div>
 
@@ -188,12 +209,15 @@ export default function PayslipDetailView({ id }) {
                     <div className="text-sm font-bold text-slate-800 mt-1">
                       {payslipData?.structureName || payslipData?.salaryStructure?.name || 'Standard Structure'}
                     </div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      {payslipData?.workedDays !== undefined && payslipData?.workedDays !== null ? `${payslipData.workedDays} Worked Days` : ''}
+                    </div>
                   </div>
 
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col justify-center items-end text-right">
                     <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Net Take-Home Pay</div>
                     <div className="text-2xl font-black text-emerald-700 font-mono mt-0.5">
-                      {formatCurrency(payslipData?.netPay || 0)}
+                      {formatCurrency(payslipData?.netPay || payslipData?.net || 0)}
                     </div>
                   </div>
                 </div>

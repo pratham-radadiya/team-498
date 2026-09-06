@@ -210,19 +210,70 @@ export async function markPayrunPaid(id) {
 export async function sendPayslips(id) {
   const payrun = await payrunRepo.findPayrunById(id)
   if (!payrun) throw new NotFoundError('Payrun not found')
-  if (payrun.status !== 'Paid') {
-    throw new ConflictError('Payslips can only be sent once the Payrun is marked Paid')
+  if (payrun.status !== 'Paid' && payrun.status !== 'Validated') {
+    throw new ConflictError('Payslips can only be sent once the Payrun is Validated or Paid')
   }
 
   const results = []
-  for (const payslip of payrun.payslips) {
-    const employee = await prisma.employee.findUnique({ where: { id: payslip.employeeId } })
-    const pdfBuffer = await renderToBuffer(React.createElement(PayslipDocument, { payslip, employee, payrun }))
-    const info = await sendPayslipEmail({ to: employee.email, employeeName: employee.name, payrunName: payrun.name, pdfBuffer })
-    results.push({ employeeId: employee.id, email: employee.email, messageId: info.messageId })
+  const failures = []
+
+  for (const payslip of payrun.payslips || []) {
+    try {
+      const employee = payslip.employee || (await prisma.employee.findUnique({ where: { id: payslip.employeeId } }))
+      if (!employee) {
+        failures.push({
+          employeeId: payslip.employeeId,
+          error: 'Employee record not found',
+        })
+        continue
+      }
+
+      const recipientEmail = employee.email
+      if (!recipientEmail || !recipientEmail.includes('@')) {
+        failures.push({
+          employeeId: employee.id,
+          name: employee.name,
+          email: recipientEmail || null,
+          error: 'Missing or invalid employee email address',
+        })
+        continue
+      }
+
+      const pdfBuffer = await renderToBuffer(
+        React.createElement(PayslipDocument, { payslip, employee, payrun })
+      )
+
+      const info = await sendPayslipEmail({
+        to: recipientEmail,
+        employeeName: employee.name,
+        payrunName: payrun.name,
+        pdfBuffer,
+      })
+
+      results.push({
+        employeeId: employee.id,
+        name: employee.name,
+        email: recipientEmail,
+        messageId: info?.messageId || 'sent',
+      })
+    } catch (err) {
+      console.error(`Failed sending payslip for employee ${payslip.employeeId}:`, err)
+      failures.push({
+        employeeId: payslip.employeeId,
+        error: err.message || 'Failed to deliver email',
+      })
+    }
   }
-  return results
+
+  return {
+    sent: results.length,
+    sentCount: results.length,
+    failuresCount: failures.length,
+    results,
+    failures,
+  }
 }
+
 
 export async function deletePayrun(id, session) {
   const payrun = await payrunRepo.findPayrunById(id)

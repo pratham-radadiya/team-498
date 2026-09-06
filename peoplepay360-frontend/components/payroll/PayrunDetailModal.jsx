@@ -235,7 +235,7 @@ export default function PayrunDetailModal({
             )}
 
             {/* 4. Send Payslips Button */}
-            {isPaid && (
+            {(isValidated || isPaid) && (
               <button
                 type="button"
                 onClick={handleSendPayslips}
@@ -281,7 +281,7 @@ export default function PayrunDetailModal({
             <div className="p-4 rounded-2xl bg-purple-50 border-2 border-purple-200 text-purple-900 text-xs space-y-1">
               <p className="font-bold flex items-center gap-2">
                 <Send className="w-4 h-4 text-purple-600" />
-                <span>Successfully sent {sentSummary.sent} payslips via email</span>
+                <span>Successfully sent {sentSummary.sentCount ?? sentSummary.sent ?? 0} payslips via email{sentSummary.failuresCount > 0 ? ` (${sentSummary.failuresCount} failed)` : ''}</span>
               </p>
             </div>
           )}

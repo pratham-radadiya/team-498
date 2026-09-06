@@ -35,7 +35,18 @@ export function deletePayslip(id) {
 
 export function listPayslipsForGrid({ skip, take, orderBy, where }) {
   return Promise.all([
-    prisma.payslip.findMany({ skip, take, orderBy, where, include: { warnings: true, employee: { select: { name: true } } } }),
+    prisma.payslip.findMany({
+      skip,
+      take,
+      orderBy: orderBy ?? { createdAt: 'desc' },
+      where,
+      include: {
+        warnings: true,
+        employee: { select: { id: true, name: true, email: true, department: true } },
+        payrun: { select: { id: true, name: true, periodStart: true, periodEnd: true, status: true } },
+        contract: { select: { id: true, wage: true, department: true, jobPosition: true } },
+      },
+    }),
     prisma.payslip.count({ where }),
   ])
 }

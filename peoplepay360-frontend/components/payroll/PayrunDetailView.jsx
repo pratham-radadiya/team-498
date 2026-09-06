@@ -126,14 +126,23 @@ export default function PayrunDetailView({ id }) {
     setSubmittingAction('send');
     try {
       const res = await sendPayslips(id);
-      setSuccessMsg(`Dispatched payslip notifications (${res?.sentCount ?? 0} sent).`);
-      setTimeout(() => setSuccessMsg(''), 5000);
+      const count = res?.sentCount ?? res?.sent ?? 0;
+      const failCount = res?.failuresCount ?? res?.failures?.length ?? 0;
+      if (failCount > 0 && count === 0) {
+        setError(`Failed to send payslips: ${res.failures[0]?.error || 'Delivery failed'}`);
+      } else if (failCount > 0) {
+        setSuccessMsg(`Sent ${count} payslips (${failCount} failed to deliver).`);
+      } else {
+        setSuccessMsg(`Successfully emailed ${count} payslip${count === 1 ? '' : 's'} with PDF attachments.`);
+      }
+      setTimeout(() => setSuccessMsg(''), 6000);
     } catch (err) {
       setError(err.message || 'Failed to send payslips.');
     } finally {
       setSubmittingAction('');
     }
   };
+
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this entire payrun batch?')) return;

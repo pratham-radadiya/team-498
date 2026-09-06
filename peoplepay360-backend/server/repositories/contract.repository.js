@@ -21,7 +21,7 @@ export function findContractById(id) {
         select: {
           id: true,
           name: true,
-          code: true,
+          active: true,
         },
       },
       workingSchedule: {

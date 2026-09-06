@@ -36,9 +36,10 @@ export async function markPayrunPaidController(id) {
 }
 
 export async function sendPayslipsController(id) {
-  const results = await payrunService.sendPayslips(id)
-  return Response.json({ sent: results.length, results })
+  const result = await payrunService.sendPayslips(id)
+  return Response.json(result)
 }
+
 
 export async function deletePayrunController(id, session) {
   await payrunService.deletePayrun(id, session)
