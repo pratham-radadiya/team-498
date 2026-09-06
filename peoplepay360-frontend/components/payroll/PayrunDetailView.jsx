@@ -346,16 +346,16 @@ export default function PayrunDetailView({ id }) {
                               </div>
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-slate-600">
-                              {slip.contract?.contractReference || slip.contractReference || '—'}
+                              {slip.contract?.contractReference || slip.contractReference || (slip.contractId ? `CON-${slip.contractId.slice(0, 6).toUpperCase()}` : '—')}
                             </td>
                             <td className="px-4 py-3 font-mono font-bold text-slate-900">
-                              {formatCurrency(slip.grossPay || 0)}
+                              {formatCurrency(slip.grossPay ?? slip.gross ?? 0)}
                             </td>
                             <td className="px-4 py-3 font-mono font-bold text-rose-600">
-                              {formatCurrency(slip.totalDeductions || 0)}
+                              {formatCurrency(slip.totalDeductions ?? Math.max(0, (slip.grossPay ?? slip.gross ?? 0) - (slip.netPay ?? slip.net ?? 0)))}
                             </td>
                             <td className="px-4 py-3 font-mono font-bold text-emerald-600">
-                              {formatCurrency(slip.netPay || 0)}
+                              {formatCurrency(slip.netPay ?? slip.net ?? 0)}
                             </td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${getStatusBadgeClass(slip.status)}`}>

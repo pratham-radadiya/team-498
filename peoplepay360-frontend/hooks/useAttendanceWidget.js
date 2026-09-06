@@ -72,28 +72,29 @@ export function useAttendanceWidget() {
     setLoading(true);
     try {
       if (isCheckedIn) {
-        await apiClient.post('/api/attendance/check-out', {}).catch(() => {});
-
+        await apiClient.post('/api/attendance/check-out', {});
         setIsCheckedIn(false);
         setActiveSessionId(null);
         setCheckInTime(null);
         setElapsedSeconds(0);
       } else {
-        const now = Date.now();
-        const response = await apiClient.post('/api/attendance/check-in', {}).catch(() => null);
-
+        const response = await apiClient.post('/api/attendance/check-in', {});
         const rec = response?.data;
         setIsCheckedIn(true);
-        const parsedStart = rec?.checkIn ? new Date(rec.checkIn).getTime() : now;
-        const startTime = isNaN(parsedStart) ? now : Math.min(parsedStart, now);
+        const parsedStart = rec?.checkIn ? new Date(rec.checkIn).getTime() : Date.now();
+        const startTime = isNaN(parsedStart) ? Date.now() : Math.min(parsedStart, Date.now());
         setCheckInTime(startTime);
         setElapsedSeconds(0);
         setActiveSessionId(rec?.id || 'active');
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('attendance-changed'));
       }
     } catch (err) {
       console.error('Failed to toggle attendance', err);
     } finally {
       setLoading(false);
+      await fetchActiveSession();
     }
   };
 

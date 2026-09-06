@@ -20,7 +20,16 @@ export function createPayrunWithDraftPayslips({ name, structureId, periodStart, 
 export function findPayrunById(id) {
   return prisma.payrun.findUnique({
     where: { id },
-    include: { payslips: { include: { warnings: true, employee: { select: { name: true } } } }, structure: true },
+    include: {
+      payslips: {
+        include: {
+          warnings: true,
+          employee: { select: { id: true, name: true, email: true, department: true, jobPosition: true } },
+          contract: { select: { id: true, wage: true, department: true, jobPosition: true } },
+        },
+      },
+      structure: { include: { rules: true } },
+    },
   })
 }
 

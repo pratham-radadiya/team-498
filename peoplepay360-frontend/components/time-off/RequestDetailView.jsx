@@ -321,57 +321,32 @@ export default function RequestDetailView({ id }) {
             </div>
           ) : (
             <form onSubmit={handleSave} className="space-y-4">
-              {/* Approval Action Banner */}
-              {canApprove && (
-                <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${
-                  formData.status === 'Approved'
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : formData.status === 'Refused'
-                    ? 'bg-rose-50 border-rose-200 text-rose-900'
-                    : 'bg-amber-50 border-amber-200 text-amber-900'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    {formData.status === 'Approved' ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                    ) : formData.status === 'Refused' ? (
-                      <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
-                    ) : (
-                      <Clock className="w-5 h-5 text-amber-600 shrink-0" />
-                    )}
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wider">
-                        Approval Status: {formData.status}
-                      </div>
-                      <div className="text-xs opacity-80">
-                        {formData.status === 'To Approve'
-                          ? 'This leave application is pending manager review. Click Accept or Reject to decide.'
-                          : `This application was marked as ${formData.status}. You can change the decision if needed.`}
-                      </div>
-                    </div>
+              {/* Approval Status Banner */}
+              <div className={`p-4 rounded-2xl border flex items-center gap-3 shadow-sm ${
+                formData.status === 'Approved'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : formData.status === 'Refused'
+                  ? 'bg-rose-50 border-rose-200 text-rose-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}>
+                {formData.status === 'Approved' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                ) : formData.status === 'Refused' ? (
+                  <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                ) : (
+                  <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+                )}
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider">
+                    Approval Status: {formData.status}
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={handleApprove}
-                      disabled={actionLoading || formData.status === 'Approved'}
-                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs flex items-center gap-1.5"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Accept</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRefuse}
-                      disabled={actionLoading || formData.status === 'Refused'}
-                      className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs flex items-center gap-1.5"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Reject</span>
-                    </button>
+                  <div className="text-xs opacity-80">
+                    {formData.status === 'To Approve'
+                      ? 'This leave application is pending manager review.'
+                      : `This application was marked as ${formData.status}.`}
                   </div>
                 </div>
-              )}
+              </div>
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
                 {/* Employee & Leave Type Selection */}
                 <div>

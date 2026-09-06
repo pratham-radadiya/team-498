@@ -26,6 +26,7 @@ export async function withAuth() {
 }
 
 export function requireRole(session, allowedRoles) {
+  if (session.role === 'ADMIN' || session.role === 'ADMINISTRATOR') return
   if (!allowedRoles.includes(session.role)) {
     throw new ForbiddenError('Insufficient role for this action')
   }

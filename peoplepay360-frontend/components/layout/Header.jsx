@@ -231,7 +231,7 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
         {mounted && role && (
           <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{ROLE_LABELS[role] || role}</span>
+            <span>{ROLE_LABELS[role] || (role ? role.replace(/_/g, ' ') : 'User')}</span>
           </div>
         )}
 
@@ -248,14 +248,14 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
             aria-haspopup="true"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
-              {mounted ? getInitials(user?.email || 'User') : 'U'}
+              {mounted ? getInitials(user?.name || user?.email || 'User') : 'U'}
             </div>
             <div className="hidden lg:block text-left">
               <p className="text-xs font-bold text-slate-800 leading-tight">
-                {mounted && user?.email ? user.email.split('@')[0] : 'User'}
+                {mounted ? (user?.name || (user?.email ? user.email.split('@')[0] : 'User')) : 'User'}
               </p>
               <p className="text-[10px] text-slate-500 font-medium leading-tight">
-                {mounted && role ? (ROLE_LABELS[role] || role) : ''}
+                {mounted && role ? (ROLE_LABELS[role] || (role ? role.replace(/_/g, ' ') : 'User')) : ''}
               </p>
             </div>
             <ChevronDown
@@ -271,11 +271,11 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
               <div className="p-4 bg-gradient-to-b from-slate-50/80 to-white">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-                    {mounted ? getInitials(user?.email || 'User') : 'U'}
+                    {mounted ? getInitials(user?.name || user?.email || 'User') : 'U'}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-900 truncate">
-                      {mounted && user?.email ? user.email.split('@')[0] : 'User'}
+                      {mounted ? (user?.name || (user?.email ? user.email.split('@')[0] : 'User')) : 'User'}
                     </p>
                     <p className="text-[11px] text-slate-500 truncate font-mono mt-0.5">
                       {mounted && user?.email ? user.email : ''}
@@ -284,7 +284,7 @@ export default function Header({ onMobileToggle: propsOnMobileToggle }) {
                 </div>
                 <div className="mt-3 flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 text-[11px] font-semibold w-fit">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{mounted && role ? (ROLE_LABELS[role] || role) : 'User'}</span>
+                  <span className="truncate">{mounted && role ? (ROLE_LABELS[role] || (role ? role.replace(/_/g, ' ') : 'User')) : 'User'}</span>
                 </div>
               </div>
 

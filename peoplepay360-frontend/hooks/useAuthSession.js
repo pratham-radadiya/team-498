@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       const { data } = await apiClient.get('/api/auth/session');
-      if (data && data.user && data.user.employeeId) {
+      if (data && data.user) {
         setSession(data);
       } else {
         setSession(null);

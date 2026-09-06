@@ -58,6 +58,18 @@ export default function AttendancePage() {
     refetchCurrent();
   };
 
+  useEffect(() => {
+    const onAttendanceChanged = () => {
+      fetchAttendanceList({ startRow: (page - 1) * pageSize, endRow: page * pageSize });
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('attendance-changed', onAttendanceChanged);
+      return () => {
+        window.removeEventListener('attendance-changed', onAttendanceChanged);
+      };
+    }
+  }, [page, pageSize, fetchAttendanceList]);
+
   const filteredRecords = records.filter((rec) => {
     const matchesSearch =
       !searchQuery ||

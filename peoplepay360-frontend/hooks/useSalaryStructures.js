@@ -87,6 +87,25 @@ export function useSalaryStructures() {
     }
   }, []);
 
+  const fetchAvailableRuleOptions = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/api/salary-rules/options');
+      return response.data || [];
+    } catch (err) {
+      console.error('Failed to load salary rule options:', err);
+      return [];
+    }
+  }, []);
+
+  const deleteRule = useCallback(async (id) => {
+    try {
+      await apiClient.delete(`/api/salary-rules/${id}`);
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Failed to delete salary rule';
+      throw new Error(msg);
+    }
+  }, []);
+
   return {
     structures,
     totalCount,
@@ -95,9 +114,11 @@ export function useSalaryStructures() {
     fetchStructures,
     fetchStructureOptions,
     fetchStructureById,
+    fetchAvailableRuleOptions,
     createStructure,
     updateStructure,
     addRulesToStructure,
     deleteStructure,
+    deleteRule,
   };
 }

@@ -107,6 +107,7 @@ export const ROUTE_PERMISSIONS = {
 export function canAccessModule(role, moduleName) {
   if (!role) return true;
   const normalizedRole = String(role).toUpperCase();
+  if (normalizedRole === ROLES.ADMIN || normalizedRole === 'ADMINISTRATOR') return true;
   const permissions = PERMISSION_MATRIX[moduleName];
   if (!permissions || !permissions.view) return true;
   return permissions.view.includes(normalizedRole);
@@ -115,6 +116,7 @@ export function canAccessModule(role, moduleName) {
 export function canAccessPath(role, path) {
   if (!role) return true;
   const normalizedRole = String(role).toUpperCase();
+  if (normalizedRole === ROLES.ADMIN || normalizedRole === 'ADMINISTRATOR') return true;
   const allowedRoles = ROUTE_PERMISSIONS[path];
   if (!allowedRoles) return true;
   return allowedRoles.includes(normalizedRole);
@@ -123,6 +125,7 @@ export function canAccessPath(role, path) {
 export function canPerformAction(role, moduleName, action = 'view') {
   if (!role) return false;
   const normalizedRole = String(role).toUpperCase();
+  if (normalizedRole === ROLES.ADMIN || normalizedRole === 'ADMINISTRATOR') return true;
   const modulePermissions = PERMISSION_MATRIX[moduleName];
   if (!modulePermissions) return false;
   const normalizedAction = action === 'update' ? 'edit' : action;

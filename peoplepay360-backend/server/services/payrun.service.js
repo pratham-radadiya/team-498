@@ -22,7 +22,8 @@ function withDates(data) {
 }
 
 export async function createPayrun(data) {
-  return payrunRepo.createPayrunWithDraftPayslips(withDates(data))
+  const payrun = await payrunRepo.createPayrunWithDraftPayslips(withDates(data))
+  return computePayrun(payrun.id)
 }
 
 export async function getEligibleEmployees(data) {
@@ -43,11 +44,60 @@ export async function getEligibleEmployees(data) {
 export async function getPayrun(id) {
   const payrun = await payrunRepo.findPayrunById(id)
   if (!payrun) throw new NotFoundError('Payrun not found')
-  const shapedPayslips = (payrun.payslips || []).map(({ employee, ...ps }) => ({
-    ...ps,
-    employeeName: employee?.name ?? null,
-  }))
-  return { ...payrun, payslips: shapedPayslips }
+
+  // If Draft and any payslip has uncomputed gross/net or missing contract, compute now
+  const hasUncomputed = payrun.status === 'Draft' && (payrun.payslips || []).some((ps) => ps.net == null || !ps.contractId || (ps.gross === 0 && ps.net === 0 && !ps.contract))
+  if (hasUncomputed && payrun.payslips?.length > 0) {
+    return computePayrun(id)
+  }
+
+  let totalGross = 0
+  let totalDeductions = 0
+  let totalNet = 0
+
+  const shapedPayslips = (payrun.payslips || []).map(({ employee, contract, ...ps }) => {
+    const wage = contract?.wage ?? 0
+    const basic = ps.basic ?? wage
+    const gross = ps.gross ?? (basic || wage)
+    const net = ps.net ?? (basic || wage)
+    const deductions = gross > net ? gross - net : 0
+
+    totalGross += gross
+    totalDeductions += deductions
+    totalNet += net
+
+    const contractRef = contract?.id
+      ? `CON-${contract.id.slice(0, 6).toUpperCase()}`
+      : (ps.contractId ? `CON-${ps.contractId.slice(0, 6).toUpperCase()}` : null)
+
+    return {
+      ...ps,
+      employeeName: employee?.name ?? null,
+      employeeEmail: employee?.email ?? null,
+      department: employee?.department ?? contract?.department ?? null,
+      jobPosition: employee?.jobPosition ?? contract?.jobPosition ?? null,
+      contractReference: contractRef,
+      grossPay: gross,
+      totalDeductions: deductions,
+      netPay: net,
+      basicWage: basic,
+      contract: contract ? {
+        ...contract,
+        contractReference: contractRef,
+      } : (contractRef ? { id: ps.contractId, contractReference: contractRef } : null),
+      employee: employee || null,
+    }
+  })
+
+  return {
+    ...payrun,
+    startDate: payrun.periodStart,
+    endDate: payrun.periodEnd,
+    totalGross,
+    totalDeductions,
+    totalNet,
+    payslips: shapedPayslips,
+  }
 }
 
 function assertNotPaid(payrun) {
@@ -75,29 +125,50 @@ export async function computePayrun(id) {
   if (!payrun) throw new NotFoundError('Payrun not found')
   assertNotPaid(payrun)
 
-  const structure = await prisma.salaryStructure.findUnique({ where: { id: payrun.structureId }, include: { rules: true } })
+  let structure = null
+  if (payrun.structureId) {
+    structure = await prisma.salaryStructure.findUnique({ where: { id: payrun.structureId }, include: { rules: true } })
+  }
+  if (!structure) {
+    structure = await prisma.salaryStructure.findFirst({ include: { rules: true } })
+  }
 
   for (const payslip of payrun.payslips) {
     const employee = await prisma.employee.findUnique({ where: { id: payslip.employeeId } })
     const contract = await resolveApplicableContract(payslip.employeeId, payrun.periodStart, payrun.periodEnd)
 
     const warnings = []
-    if (!employee.bankAccount) {
+    if (employee && !employee.bankAccount) {
       warnings.push({ type: 'missing_bank', message: `${employee.name} has no bank account on file` })
     }
     const duplicates = await payslipRepo.findOverlappingFinalizedPayslips(payslip.employeeId, payrun.periodStart, payrun.periodEnd, payrun.id)
     if (duplicates.length > 0) {
-      warnings.push({ type: 'duplicate', message: `${employee.name} already has a finalized payslip for an overlapping period` })
+      warnings.push({ type: 'duplicate', message: `${employee?.name || 'Employee'} already has a finalized payslip for an overlapping period` })
     }
 
     if (!contract) {
-      warnings.push({ type: 'no_contract', message: `${employee.name} has no Running contract covering this period — cannot compute salary` })
+      warnings.push({ type: 'no_contract', message: `${employee?.name || 'Employee'} has no contract covering this period` })
       await payslipRepo.replaceWarnings(payslip.id, warnings)
       continue
     }
 
     const workedDays = await countWorkedDays(payslip.employeeId, payrun.periodStart, payrun.periodEnd)
-    const { lines, basic, gross, net } = computeSalaryRules(structure.rules, { wage: contract.wage, workedDays })
+    let lines = []
+    let basic = contract.wage || 0
+    let gross = contract.wage || 0
+    let net = contract.wage || 0
+
+    if (structure?.rules?.length) {
+      try {
+        const computed = computeSalaryRules(structure.rules, { wage: contract.wage || 0, workedDays })
+        lines = computed.lines || []
+        basic = computed.basic || contract.wage || 0
+        gross = computed.gross || contract.wage || 0
+        net = computed.net || contract.wage || 0
+      } catch (err) {
+        console.error('Failed computing salary rules for employee:', payslip.employeeId, err)
+      }
+    }
 
     await payslipRepo.updatePayslipComputation(payslip.id, {
       contractId: contract.id,
@@ -121,7 +192,8 @@ export async function validatePayrun(id) {
     throw new ConflictError('Only a Draft Payrun can be validated')
   }
   await prisma.payslip.updateMany({ where: { payrunId: id }, data: { status: 'Validated' } })
-  return payrunRepo.updatePayrunStatus(id, 'Validated')
+  await payrunRepo.updatePayrunStatus(id, 'Validated')
+  return getPayrun(id)
 }
 
 export async function markPayrunPaid(id) {
@@ -131,7 +203,8 @@ export async function markPayrunPaid(id) {
     throw new ConflictError('Only a Validated Payrun can be marked Paid')
   }
   await prisma.payslip.updateMany({ where: { payrunId: id }, data: { status: 'Paid' } })
-  return payrunRepo.updatePayrunStatus(id, 'Paid')
+  await payrunRepo.updatePayrunStatus(id, 'Paid')
+  return getPayrun(id)
 }
 
 export async function sendPayslips(id) {

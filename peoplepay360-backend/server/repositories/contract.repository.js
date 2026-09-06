@@ -28,7 +28,7 @@ export function findContractById(id) {
         select: {
           id: true,
           name: true,
-          averageHoursPerDay: true,
+          totalWeeklyHours: true,
         },
       },
     },

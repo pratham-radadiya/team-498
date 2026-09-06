@@ -14,5 +14,10 @@ export async function resolveApplicableContract(employeeId, periodStart, periodE
     },
     orderBy: { startDate: 'desc' },
   })
-  return candidates[0] ?? null
+  if (candidates.length > 0) return candidates[0]
+
+  return prisma.contract.findFirst({
+    where: { employeeId },
+    orderBy: { createdAt: 'desc' },
+  })
 }
